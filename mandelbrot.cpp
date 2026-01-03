@@ -7,12 +7,15 @@
 //
 // Controls:
 //   Mouse wheel - zoom in/out centered on mouse
-//   Left-drag   - pan
+//   Left-drag   - pan (click-and-drag)
+//   Right-drag  - select a rectangle (selection is shown as an overlay)
+//   Left-click inside the selection - open a new window framed on that selection
 //   R           - reset view
 //   + / -       - increase/decrease max iterations
 //   Esc / Close - exit
 
 #include <windows.h>
+#include <windowsx.h>
 #include <stdint.h>
 #include <math.h>
 #include <string>
@@ -31,9 +34,27 @@ struct AppState {
     POINT dragStart;
     double dragCenterX, dragCenterY;
     bool needRender = true;
+
+    // Selection/right-drag support:
+    bool selecting = false;   // currently dragging right-button
+    POINT selStart;           // selection start in client coords
+    RECT selRect = { 0,0,0,0 };  // normalized selection rect (client coords)
+    bool hasSelection = false; // whether a selection exists to act on
+
+    // Ownership: whether this AppState was heap-allocated (for new windows)
+    bool owned = false;
 } g_state;
 
-static void CreateOrResizeBitmap(AppState &s, int w, int h) {
+static void NormalizeRect(RECT& r) {
+    if (r.left > r.right) std::swap(r.left, r.right);
+    if (r.top > r.bottom) std::swap(r.top, r.bottom);
+}
+
+static bool PointInRectEx(const RECT& r, int x, int y) {
+    return (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom);
+}
+
+static void CreateOrResizeBitmap(AppState& s, int w, int h) {
     if (s.hBitmap) {
         DeleteObject(s.hBitmap);
         s.hBitmap = nullptr;
@@ -58,12 +79,12 @@ static void CreateOrResizeBitmap(AppState &s, int w, int h) {
     s.needRender = true;
 }
 
-static void HSVtoRGB(double h, double s, double v, uint8_t &outR, uint8_t &outG, uint8_t &outB) {
+static void HSVtoRGB(double h, double s, double v, uint8_t& outR, uint8_t& outG, uint8_t& outB) {
     // h in [0,360)
     double c = v * s;
     double hh = h / 60.0;
     double x = c * (1 - fabs(fmod(hh, 2.0) - 1.0));
-    double r=0,g=0,b=0;
+    double r = 0, g = 0, b = 0;
     if (0.0 <= hh && hh < 1.0) { r = c; g = x; b = 0; }
     else if (1.0 <= hh && hh < 2.0) { r = x; g = c; b = 0; }
     else if (2.0 <= hh && hh < 3.0) { r = 0; g = c; b = x; }
@@ -76,7 +97,7 @@ static void HSVtoRGB(double h, double s, double v, uint8_t &outR, uint8_t &outG,
     outB = (uint8_t)round((b + m) * 255.0);
 }
 
-static void RenderMandelbrot(AppState &s) {
+static void RenderMandelbrot(AppState& s) {
     if (!s.pixels) return;
     const int w = s.width;
     const int h = s.height;
@@ -85,7 +106,7 @@ static void RenderMandelbrot(AppState &s) {
     const double scale = s.scale;
     const int maxIter = s.maxIter;
 
-    uint32_t *buf = (uint32_t*)s.pixels;
+    uint32_t* buf = (uint32_t*)s.pixels;
 
     // For each pixel
     for (int y = 0; y < h; ++y) {
@@ -105,11 +126,12 @@ static void RenderMandelbrot(AppState &s) {
                 ++iter;
             }
 
-            uint8_t r=0,g=0,b=0;
+            uint8_t r = 0, g = 0, b = 0;
             if (iter >= maxIter) {
                 // inside - black
                 r = g = b = 0;
-            } else {
+            }
+            else {
                 // smooth coloring
                 double log_zn = log(zx2 + zy2) / 2.0;
                 double nu = log(log_zn / log(2.0)) / log(2.0);
@@ -136,53 +158,188 @@ static void RenderMandelbrot(AppState &s) {
     s.needRender = false;
 }
 
+// Create a new top-level window that displays the currently selected rectangle.
+// The new window gets a copy of the parent's AppState with center/scale adjusted
+// so the selection becomes the new viewport (centered) in the newly created window.
+static void CreateNewWindowForSelection(AppState* parent) {
+    if (!parent->hasSelection) return;
+
+    // compute selection center in client coords
+    RECT sel = parent->selRect;
+    NormalizeRect(sel);
+    int selW = sel.right - sel.left;
+    int selH = sel.bottom - sel.top;
+    if (selW <= 0 || selH <= 0) return;
+
+    double selCenterPx = (sel.left + sel.right) / 2.0;
+    double selCenterPy = (sel.top + sel.bottom) / 2.0;
+
+    // world coords of selection center
+    double worldX = parent->centerX + (selCenterPx - parent->width / 2.0) * parent->scale;
+    double worldY = parent->centerY + (selCenterPy - parent->height / 2.0) * parent->scale;
+
+    // new scale: selection width in pixels maps to new window width; we want newScale = parent.scale * (selW / parent.width)
+    // This means the selected region will become the full width of the new window.
+    double newScale = parent->scale * ((double)selW / (double)parent->width);
+
+    // allocate new state by copying parent
+    AppState* ns = new AppState(*parent);
+    ns->owned = true;
+    ns->centerX = worldX;
+    ns->centerY = worldY;
+    ns->scale = newScale;
+    ns->selecting = false;
+    ns->hasSelection = false;
+    ns->needRender = true;
+    ns->hBitmap = nullptr;
+    ns->pixels = nullptr;
+
+    // Create the new window using the same class. The WinMain registered the class name "MandelbrotWindowClass".
+    HINSTANCE hInst = GetModuleHandle(NULL);
+    HWND hwnd = CreateWindowExA(0, "MandelbrotWindowClass", "Mandelbrot - Selection",
+        WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, parent->width + 16, parent->height + 40,
+        NULL, NULL, hInst, ns);
+    if (!hwnd) {
+        // failed to create window -> cleanup
+        delete ns;
+        return;
+    }
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
+
+    // Trigger initial bitmap creation for the new window by sending a resize message (or directly creating bitmap)
+    RECT client;
+    GetClientRect(hwnd, &client);
+    CreateOrResizeBitmap(*ns, client.right - client.left, client.bottom - client.top);
+    InvalidateRect(hwnd, NULL, FALSE);
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    // Retrieve per-window AppState pointer
+    AppState* s = (AppState*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+
     switch (msg) {
-    case WM_CREATE:
-        CreateOrResizeBitmap(g_state, g_state.width, g_state.height);
+    case WM_CREATE: {
+        // The lpCreateParams contains the AppState* we passed when creating the window
+        CREATESTRUCTA* cs = (CREATESTRUCTA*)lParam;
+        AppState* passed = (AppState*)cs->lpCreateParams;
+        if (passed) {
+            s = passed;
+        }
+        else {
+            // fallback to global state if none provided
+            s = &g_state;
+            s->owned = false;
+        }
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)s);
+
+        // Create initial bitmap sized to client area
+        RECT client;
+        GetClientRect(hwnd, &client);
+        CreateOrResizeBitmap(*s, (client.right - client.left), (client.bottom - client.top));
         return 0;
+    }
 
     case WM_SIZE: {
+        if (!s) break;
         int w = LOWORD(lParam);
         int h = HIWORD(lParam);
         if (w > 0 && h > 0) {
-            CreateOrResizeBitmap(g_state, w, h);
+            CreateOrResizeBitmap(*s, w, h);
             InvalidateRect(hwnd, NULL, FALSE);
         }
         return 0;
     }
 
     case WM_LBUTTONDOWN: {
-        g_state.dragging = true;
-        g_state.dragStart.x = LOWORD(lParam);
-        g_state.dragStart.y = HIWORD(lParam);
-        g_state.dragCenterX = g_state.centerX;
-        g_state.dragCenterY = g_state.centerY;
+        if (!s) break;
+        int mx = LOWORD(lParam);
+        int my = HIWORD(lParam);
+        // If there's an existing selection and the click is inside it, open new window framed on that selection.
+        if (s->hasSelection) {
+            RECT sel = s->selRect;
+            NormalizeRect(sel);
+            if (PointInRectEx(sel, mx, my)) {
+                CreateNewWindowForSelection(s);
+                return 0;
+            }
+        }
+
+        // Otherwise, start panning (original behavior)
+        s->dragging = true;
+        s->dragStart.x = mx;
+        s->dragStart.y = my;
+        s->dragCenterX = s->centerX;
+        s->dragCenterY = s->centerY;
         SetCapture(hwnd);
         return 0;
     }
 
     case WM_LBUTTONUP: {
-        g_state.dragging = false;
+        if (!s) break;
+        s->dragging = false;
         ReleaseCapture();
         return 0;
     }
 
     case WM_MOUSEMOVE: {
-        if (g_state.dragging) {
+        if (!s) break;
+        if (s->dragging) {
             int x = LOWORD(lParam);
             int y = HIWORD(lParam);
-            int dx = x - g_state.dragStart.x;
-            int dy = y - g_state.dragStart.y;
-            g_state.centerX = g_state.dragCenterX - dx * g_state.scale;
-            g_state.centerY = g_state.dragCenterY - dy * g_state.scale;
-            g_state.needRender = true;
+            int dx = x - s->dragStart.x;
+            int dy = y - s->dragStart.y;
+            s->centerX = s->dragCenterX - dx * s->scale;
+            s->centerY = s->dragCenterY - dy * s->scale;
+            s->needRender = true;
+            InvalidateRect(hwnd, NULL, FALSE);
+        }
+        else if (s->selecting) {
+            int x = LOWORD(lParam);
+            int y = HIWORD(lParam);
+            s->selRect.left = s->selStart.x;
+            s->selRect.top = s->selStart.y;
+            s->selRect.right = x;
+            s->selRect.bottom = y;
+            NormalizeRect(s->selRect);
             InvalidateRect(hwnd, NULL, FALSE);
         }
         return 0;
     }
 
+    case WM_RBUTTONDOWN: {
+        if (!s) break;
+        s->selecting = true;
+        s->selStart.x = LOWORD(lParam);
+        s->selStart.y = HIWORD(lParam);
+        s->selRect.left = s->selRect.right = s->selStart.x;
+        s->selRect.top = s->selRect.bottom = s->selStart.y;
+        s->hasSelection = false; // selection being created/changed
+        SetCapture(hwnd);
+        InvalidateRect(hwnd, NULL, FALSE);
+        return 0;
+    }
+
+    case WM_RBUTTONUP: {
+        if (!s) break;
+        s->selecting = false;
+        ReleaseCapture();
+        NormalizeRect(s->selRect);
+        // ignore too-small selections (click without drag)
+        int selW = s->selRect.right - s->selRect.left;
+        int selH = s->selRect.bottom - s->selRect.top;
+        if (selW <= 4 || selH <= 4) {
+            s->hasSelection = false;
+        }
+        else {
+            s->hasSelection = true;
+        }
+        InvalidateRect(hwnd, NULL, FALSE);
+        return 0;
+    }
+
     case WM_MOUSEWHEEL: {
+        if (!s) break;
         int delta = GET_WHEEL_DELTA_WPARAM(wParam);
         POINT mp;
         mp.x = GET_X_LPARAM(lParam);
@@ -191,73 +348,98 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         // Convert to client coordinates
         ScreenToClient(hwnd, &mp);
 
-        double oldScale = g_state.scale;
+        double oldScale = s->scale;
         double factor = (delta > 0) ? 0.8 : 1.25;
         // Use exponential for smooth zoom
         double zoomFactor = pow(factor, abs(delta) / 120.0);
         double newScale = oldScale * zoomFactor;
 
         // Keep mouse point stable in world coords
-        double worldX = g_state.centerX + (mp.x - g_state.width / 2.0) * oldScale;
-        double worldY = g_state.centerY + (mp.y - g_state.height / 2.0) * oldScale;
-        g_state.centerX = worldX - (mp.x - g_state.width / 2.0) * newScale;
-        g_state.centerY = worldY - (mp.y - g_state.height / 2.0) * newScale;
-        g_state.scale = newScale;
+        double worldX = s->centerX + (mp.x - s->width / 2.0) * oldScale;
+        double worldY = s->centerY + (mp.y - s->height / 2.0) * oldScale;
+        s->centerX = worldX - (mp.x - s->width / 2.0) * newScale;
+        s->centerY = worldY - (mp.y - s->height / 2.0) * newScale;
+        s->scale = newScale;
 
-        g_state.needRender = true;
+        s->needRender = true;
         InvalidateRect(hwnd, NULL, FALSE);
         return 0;
     }
 
     case WM_KEYDOWN: {
+        if (!s) break;
         if (wParam == 'R') {
-            g_state.centerX = -0.75;
-            g_state.centerY = 0.0;
-            g_state.scale = 3.0 / 800.0;
-            g_state.needRender = true;
+            s->centerX = -0.75;
+            s->centerY = 0.0;
+            s->scale = 3.0 / 800.0;
+            s->needRender = true;
             InvalidateRect(hwnd, NULL, FALSE);
-        } else if (wParam == VK_ESCAPE) {
+        }
+        else if (wParam == VK_ESCAPE) {
             PostMessage(hwnd, WM_CLOSE, 0, 0);
-        } else if (wParam == VK_ADD || wParam == VK_OEM_PLUS) {
-            g_state.maxIter = (int)(g_state.maxIter * 1.25) + 10;
-            if (g_state.maxIter > 5000) g_state.maxIter = 5000;
-            g_state.needRender = true;
+        }
+        else if (wParam == VK_ADD || wParam == VK_OEM_PLUS) {
+            s->maxIter = (int)(s->maxIter * 1.25) + 10;
+            if (s->maxIter > 5000) s->maxIter = 5000;
+            s->needRender = true;
             InvalidateRect(hwnd, NULL, FALSE);
-        } else if (wParam == VK_SUBTRACT || wParam == VK_OEM_MINUS) {
-            g_state.maxIter = (int)(g_state.maxIter * 0.8) - 10;
-            if (g_state.maxIter < 10) g_state.maxIter = 10;
-            g_state.needRender = true;
+        }
+        else if (wParam == VK_SUBTRACT || wParam == VK_OEM_MINUS) {
+            s->maxIter = (int)(s->maxIter * 0.8) - 10;
+            if (s->maxIter < 10) s->maxIter = 10;
+            s->needRender = true;
             InvalidateRect(hwnd, NULL, FALSE);
         }
         return 0;
     }
 
     case WM_PAINT: {
+        if (!s) break;
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
 
-        if (g_state.needRender) {
-            RenderMandelbrot(g_state);
+        if (s->needRender) {
+            RenderMandelbrot(*s);
         }
 
-        if (g_state.hBitmap) {
+        if (s->hBitmap) {
             HDC memDC = CreateCompatibleDC(hdc);
-            HGDIOBJ old = SelectObject(memDC, g_state.hBitmap);
-            BitBlt(hdc, 0, 0, g_state.width, g_state.height, memDC, 0, 0, SRCCOPY);
+            HGDIOBJ old = SelectObject(memDC, s->hBitmap);
+            BitBlt(hdc, 0, 0, s->width, s->height, memDC, 0, 0, SRCCOPY);
             SelectObject(memDC, old);
             DeleteDC(memDC);
-        } else {
+        }
+        else {
             FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
         }
 
         // Draw simple overlay text
         {
-            std::string info = "Center: " + std::to_string(g_state.centerX) + ", " + std::to_string(g_state.centerY)
-                + "  Scale: " + std::to_string(g_state.scale) + "  Iter: " + std::to_string(g_state.maxIter);
+            std::string info = "Center: " + std::to_string(s->centerX) + ", " + std::to_string(s->centerY)
+                + "  Scale: " + std::to_string(s->scale) + "  Iter: " + std::to_string(s->maxIter);
             SetTextColor(hdc, RGB(255, 255, 255));
             SetBkMode(hdc, TRANSPARENT);
-            RECT r = { 8, 8, g_state.width - 8, 40 };
+            RECT r = { 8, 8, s->width - 8, 40 };
             DrawTextA(hdc, info.c_str(), (int)info.size(), &r, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX);
+        }
+
+        // Draw selection rectangle overlay if any
+        if (s->selecting || s->hasSelection) {
+            RECT r = s->selRect;
+            NormalizeRect(r);
+
+            // Draw a dashed rectangle with a semi-transparent fill-like border (GDI has no alpha here,
+            // so we do a simple dashed frame and XOR focus rect for visibility).
+            HPEN hPen = CreatePen(PS_DASH, 1, RGB(255, 255, 0));
+            HGDIOBJ oldPen = SelectObject(hdc, hPen);
+            HBRUSH oldBr = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
+            Rectangle(hdc, r.left, r.top, r.right, r.bottom);
+            SelectObject(hdc, oldBr);
+            SelectObject(hdc, oldPen);
+            DeleteObject(hPen);
+
+            // Draw a focus rect for extra visibility
+            DrawFocusRect(hdc, &r);
         }
 
         EndPaint(hwnd, &ps);
@@ -265,8 +447,20 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
 
     case WM_DESTROY:
-        if (g_state.hBitmap) DeleteObject(g_state.hBitmap);
-        PostQuitMessage(0);
+        if (s) {
+            if (s->hBitmap) DeleteObject(s->hBitmap);
+            s->hBitmap = nullptr;
+            s->pixels = nullptr;
+            PostQuitMessage(0);
+            // If this AppState was dynamically allocated for a created window, free it
+            if (s->owned) {
+                delete s;
+                // Note: can't touch 's' after deleting; GWLP_USERDATA will be cleaned by system
+            }
+        }
+        else {
+            PostQuitMessage(0);
+        }
         return 0;
     }
 
@@ -293,17 +487,20 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
 
     HWND hwnd = CreateWindowExA(0, wc.lpszClassName, "Mandelbrot Renderer", WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, r.right - r.left, r.bottom - r.top,
-        NULL, NULL, hInstance, NULL);
+        NULL, NULL, hInstance, &g_state);
 
     if (!hwnd) {
         MessageBoxA(NULL, "CreateWindowEx failed", "Error", MB_ICONERROR);
         return 1;
     }
 
+    // Mark global state as not owned
+    g_state.owned = false;
+
     ShowWindow(hwnd, nCmdShow);
     UpdateWindow(hwnd);
 
-    // Create initial bitmap sized to client area
+    // Create initial bitmap sized to client area (redundant with WM_CREATE but ensures correct size)
     RECT client;
     GetClientRect(hwnd, &client);
     CreateOrResizeBitmap(g_state, client.right - client.left, client.bottom - client.top);
