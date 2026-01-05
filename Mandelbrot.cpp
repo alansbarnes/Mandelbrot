@@ -18,7 +18,8 @@
 #include <math.h>
 #include <string>
 
-struct AppState {
+struct AppState
+{
     int width = 800;
     int height = 600;
     HBITMAP hBitmap = nullptr;
@@ -34,8 +35,10 @@ struct AppState {
     bool needRender = true;
 } g_state;
 
-static void CreateOrResizeBitmap(AppState& s, int w, int h) {
-    if (s.hBitmap) {
+static void CreateOrResizeBitmap(AppState& s, int w, int h)
+{
+    if (s.hBitmap)
+    {
         DeleteObject(s.hBitmap);
         s.hBitmap = nullptr;
         s.pixels = nullptr;
@@ -59,7 +62,8 @@ static void CreateOrResizeBitmap(AppState& s, int w, int h) {
     s.needRender = true;
 }
 
-static void HSVtoRGB(double h, double s, double v, uint8_t& outR, uint8_t& outG, uint8_t& outB) {
+static void HSVtoRGB(double h, double s, double v, uint8_t& outR, uint8_t& outG, uint8_t& outB)
+{
     // h in [0,360)
     double c = v * s;
     double hh = h / 60.0;
@@ -77,7 +81,8 @@ static void HSVtoRGB(double h, double s, double v, uint8_t& outR, uint8_t& outG,
     outB = (uint8_t)round((b + m) * 255.0);
 }
 
-static void RenderMandelbrot(AppState& s) {
+static void RenderMandelbrot(AppState& s)
+{
     if (!s.pixels) return;
     const int w = s.width;
     const int h = s.height;
@@ -89,16 +94,19 @@ static void RenderMandelbrot(AppState& s) {
     uint32_t* buf = (uint32_t*)s.pixels;
 
     // For each pixel
-    for (int y = 0; y < h; ++y) {
+    for (int y = 0; y < h; ++y)
+    {
         double imag = cy + (y - h / 2.0) * scale;
-        for (int x = 0; x < w; ++x) {
+        for (int x = 0; x < w; ++x)
+        {
             double real = cx + (x - w / 2.0) * scale;
 
             double zx = 0.0, zy = 0.0;
             int iter = 0;
             double zx2 = 0.0, zy2 = 0.0;
 
-            while (zx2 + zy2 <= 4.0 && iter < maxIter) {
+            while (zx2 + zy2 <= 4.0 && iter < maxIter)
+            {
                 zy = 2.0 * zx * zy + imag;
                 zx = zx2 - zy2 + real;
                 zx2 = zx * zx;
@@ -107,11 +115,13 @@ static void RenderMandelbrot(AppState& s) {
             }
 
             uint8_t r = 0, g = 0, b = 0;
-            if (iter >= maxIter) {
+            if (iter >= maxIter)
+            {
                 // inside - black
                 r = g = b = 0;
             }
-            else {
+            else
+            {
                 // smooth coloring
                 double log_zn = log(zx2 + zy2) / 2.0;
                 double nu = log(log_zn / log(2.0)) / log(2.0);
@@ -138,148 +148,167 @@ static void RenderMandelbrot(AppState& s) {
     s.needRender = false;
 }
 
-LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    switch (msg) {
-    case WM_CREATE:
-        CreateOrResizeBitmap(g_state, g_state.width, g_state.height);
-        return 0;
-
-    case WM_SIZE: {
-        int w = LOWORD(lParam);
-        int h = HIWORD(lParam);
-        if (w > 0 && h > 0) {
-            CreateOrResizeBitmap(g_state, w, h);
-            InvalidateRect(hwnd, NULL, FALSE);
-        }
-        return 0;
-    }
-
-    case WM_LBUTTONDOWN: {
-        g_state.dragging = true;
-        g_state.dragStart.x = LOWORD(lParam);
-        g_state.dragStart.y = HIWORD(lParam);
-        g_state.dragCenterX = g_state.centerX;
-        g_state.dragCenterY = g_state.centerY;
-        SetCapture(hwnd);
-        return 0;
-    }
-
-    case WM_LBUTTONUP: {
-        g_state.dragging = false;
-        ReleaseCapture();
-        return 0;
-    }
-
-    case WM_MOUSEMOVE: {
-        if (g_state.dragging) {
-            int x = LOWORD(lParam);
-            int y = HIWORD(lParam);
-            int dx = x - g_state.dragStart.x;
-            int dy = y - g_state.dragStart.y;
-            g_state.centerX = g_state.dragCenterX - dx * g_state.scale;
-            g_state.centerY = g_state.dragCenterY - dy * g_state.scale;
-            g_state.needRender = true;
-            InvalidateRect(hwnd, NULL, FALSE);
-        }
-        return 0;
-    }
-
-    case WM_MOUSEWHEEL: {
-        int delta = GET_WHEEL_DELTA_WPARAM(wParam);
-        POINT mp;
-        mp.x = GET_X_LPARAM(lParam);
-        mp.y = GET_Y_LPARAM(lParam);
-
-        // Convert to client coordinates
-        ScreenToClient(hwnd, &mp);
-
-        double oldScale = g_state.scale;
-        double factor = (delta > 0) ? 0.8 : 1.25;
-        // Use exponential for smooth zoom
-        double zoomFactor = pow(factor, abs(delta) / 120.0);
-        double newScale = oldScale * zoomFactor;
-
-        // Keep mouse point stable in world coords
-        double worldX = g_state.centerX + (mp.x - g_state.width / 2.0) * oldScale;
-        double worldY = g_state.centerY + (mp.y - g_state.height / 2.0) * oldScale;
-        g_state.centerX = worldX - (mp.x - g_state.width / 2.0) * newScale;
-        g_state.centerY = worldY - (mp.y - g_state.height / 2.0) * newScale;
-        g_state.scale = newScale;
-
-        g_state.needRender = true;
-        InvalidateRect(hwnd, NULL, FALSE);
-        return 0;
-    }
-
-    case WM_KEYDOWN: {
-        if (wParam == 'R') {
-            g_state.centerX = -0.75;
-            g_state.centerY = 0.0;
-            g_state.scale = 3.0 / 800.0;
-            g_state.needRender = true;
-            InvalidateRect(hwnd, NULL, FALSE);
-        }
-        else if (wParam == VK_ESCAPE) {
-            PostMessage(hwnd, WM_CLOSE, 0, 0);
-        }
-        else if (wParam == VK_ADD || wParam == VK_OEM_PLUS) {
-            g_state.maxIter = (int)(g_state.maxIter * 1.25) + 10;
-            if (g_state.maxIter > 5000) g_state.maxIter = 5000;
-            g_state.needRender = true;
-            InvalidateRect(hwnd, NULL, FALSE);
-        }
-        else if (wParam == VK_SUBTRACT || wParam == VK_OEM_MINUS) {
-            g_state.maxIter = (int)(g_state.maxIter * 0.8) - 10;
-            if (g_state.maxIter < 10) g_state.maxIter = 10;
-            g_state.needRender = true;
-            InvalidateRect(hwnd, NULL, FALSE);
-        }
-        return 0;
-    }
-
-    case WM_PAINT: {
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
-
-        if (g_state.needRender) {
-            RenderMandelbrot(g_state);
-        }
-
-        if (g_state.hBitmap) {
-            HDC memDC = CreateCompatibleDC(hdc);
-            HGDIOBJ old = SelectObject(memDC, g_state.hBitmap);
-            BitBlt(hdc, 0, 0, g_state.width, g_state.height, memDC, 0, 0, SRCCOPY);
-            SelectObject(memDC, old);
-            DeleteDC(memDC);
-        }
-        else {
-            FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
-        }
-
-        // Draw simple overlay text
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg)
+    {
+        case WM_CREATE:
+            CreateOrResizeBitmap(g_state, g_state.width, g_state.height);
+            return 0;
+    
+        case WM_SIZE:
         {
-            std::string info = "Center: " + std::to_string(g_state.centerX) + ", " + std::to_string(g_state.centerY)
-                + "  Scale: " + std::to_string(g_state.scale) + "  Iter: " + std::to_string(g_state.maxIter);
-            SetTextColor(hdc, RGB(255, 255, 255));
-            SetBkMode(hdc, TRANSPARENT);
-            RECT r = { 8, 8, g_state.width - 8, 40 };
-            DrawTextA(hdc, info.c_str(), (int)info.size(), &r, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX);
+            int w = LOWORD(lParam);
+            int h = HIWORD(lParam);
+            if (w > 0 && h > 0)
+            {
+                CreateOrResizeBitmap(g_state, w, h);
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+            return 0;
         }
-
-        EndPaint(hwnd, &ps);
-        return 0;
-    }
-
-    case WM_DESTROY:
-        if (g_state.hBitmap) DeleteObject(g_state.hBitmap);
-        PostQuitMessage(0);
-        return 0;
+    
+        case WM_LBUTTONDOWN:
+        {
+            g_state.dragging = true;
+            g_state.dragStart.x = LOWORD(lParam);
+            g_state.dragStart.y = HIWORD(lParam);
+            g_state.dragCenterX = g_state.centerX;
+            g_state.dragCenterY = g_state.centerY;
+            SetCapture(hwnd);
+            return 0;
+        }
+    
+        case WM_LBUTTONUP:
+        {
+            g_state.dragging = false;
+            ReleaseCapture();
+            return 0;
+        }
+    
+        case WM_MOUSEMOVE:
+        {
+            if (g_state.dragging)
+            {
+                int x = LOWORD(lParam);
+                int y = HIWORD(lParam);
+                int dx = x - g_state.dragStart.x;
+                int dy = y - g_state.dragStart.y;
+                g_state.centerX = g_state.dragCenterX - dx * g_state.scale;
+                g_state.centerY = g_state.dragCenterY - dy * g_state.scale;
+                g_state.needRender = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+            return 0;
+        }
+    
+        case WM_MOUSEWHEEL:
+        {
+            int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+            POINT mp;
+            mp.x = GET_X_LPARAM(lParam);
+            mp.y = GET_Y_LPARAM(lParam);
+    
+            // Convert to client coordinates
+            ScreenToClient(hwnd, &mp);
+    
+            double oldScale = g_state.scale;
+            double factor = (delta > 0) ? 0.8 : 1.25;
+            // Use exponential for smooth zoom
+            double zoomFactor = pow(factor, abs(delta) / 120.0);
+            double newScale = oldScale * zoomFactor;
+    
+            // Keep mouse point stable in world coords
+            double worldX = g_state.centerX + (mp.x - g_state.width / 2.0) * oldScale;
+            double worldY = g_state.centerY + (mp.y - g_state.height / 2.0) * oldScale;
+            g_state.centerX = worldX - (mp.x - g_state.width / 2.0) * newScale;
+            g_state.centerY = worldY - (mp.y - g_state.height / 2.0) * newScale;
+            g_state.scale = newScale;
+    
+            g_state.needRender = true;
+            InvalidateRect(hwnd, NULL, FALSE);
+            return 0;
+        }
+    
+        case WM_KEYDOWN:
+        {
+            if (wParam == 'R')
+            {
+                g_state.centerX = -0.75;
+                g_state.centerY = 0.0;
+                g_state.scale = 3.0 / 800.0;
+                g_state.needRender = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+            else if (wParam == VK_ESCAPE)
+            {
+                PostMessage(hwnd, WM_CLOSE, 0, 0);
+            }
+            else if (wParam == VK_ADD || wParam == VK_OEM_PLUS)
+            {
+                g_state.maxIter = (int)(g_state.maxIter * 1.25) + 10;
+                if (g_state.maxIter > 5000) g_state.maxIter = 5000;
+                g_state.needRender = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+            else if (wParam == VK_SUBTRACT || wParam == VK_OEM_MINUS)
+            {
+                g_state.maxIter = (int)(g_state.maxIter * 0.8) - 10;
+                if (g_state.maxIter < 10) g_state.maxIter = 10;
+                g_state.needRender = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+            return 0;
+        }
+    
+        case WM_PAINT:
+        {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hwnd, &ps);
+    
+            if (g_state.needRender)
+            {
+                RenderMandelbrot(g_state);
+            }
+    
+            if (g_state.hBitmap)
+            {
+                HDC memDC = CreateCompatibleDC(hdc);
+                HGDIOBJ old = SelectObject(memDC, g_state.hBitmap);
+                BitBlt(hdc, 0, 0, g_state.width, g_state.height, memDC, 0, 0, SRCCOPY);
+                SelectObject(memDC, old);
+                DeleteDC(memDC);
+            }
+            else
+            {
+                FillRect(hdc, &ps.rcPaint, (HBRUSH)(COLOR_WINDOW + 1));
+            }
+    
+            // Draw simple overlay text
+            {
+                std::string info = "Center: " + std::to_string(g_state.centerX) + ", " + std::to_string(g_state.centerY)
+                    + "  Scale: " + std::to_string(g_state.scale) + "  Iter: " + std::to_string(g_state.maxIter);
+                SetTextColor(hdc, RGB(255, 255, 255));
+                SetBkMode(hdc, TRANSPARENT);
+                RECT r = { 8, 8, g_state.width - 8, 40 };
+                DrawTextA(hdc, info.c_str(), (int)info.size(), &r, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX);
+            }
+    
+            EndPaint(hwnd, &ps);
+            return 0;
+        }
+    
+        case WM_DESTROY:
+            if (g_state.hBitmap) DeleteObject(g_state.hBitmap);
+            PostQuitMessage(0);
+            return 0;
     }
 
     return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
+{
     WNDCLASSEXA wc = { 0 };
     wc.cbSize = sizeof(wc);
     wc.style = CS_HREDRAW | CS_VREDRAW;
@@ -289,7 +318,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
     wc.lpszClassName = "MandelbrotWindowClass";
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 
-    if (!RegisterClassExA(&wc)) {
+    if (!RegisterClassExA(&wc))
+    {
         MessageBoxA(NULL, "RegisterClassEx failed", "Error", MB_ICONERROR);
         return 1;
     }
@@ -301,7 +331,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
         CW_USEDEFAULT, CW_USEDEFAULT, r.right - r.left, r.bottom - r.top,
         NULL, NULL, hInstance, NULL);
 
-    if (!hwnd) {
+    if (!hwnd)
+    {
         MessageBoxA(NULL, "CreateWindowEx failed", "Error", MB_ICONERROR);
         return 1;
     }
@@ -316,9 +347,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow) {
 
     // Main loop
     MSG msg;
-    while (GetMessage(&msg, NULL, 0, 0)) {
+    while (GetMessage(&msg, NULL, 0, 0))
+    {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
     return (int)msg.wParam;
+
 }
