@@ -22,8 +22,8 @@
 
 struct AppState
 {
-//    int width = 800;
-//    int height = 600;
+    //    int width = 800;
+    //    int height = 600;
     int width = 1600;
     int height = 1200;
     HBITMAP hBitmap = nullptr;
@@ -216,7 +216,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_CREATE:
     {
         // The lpCreateParams contains the AppState* we passed when creating the window
-        CREATESTRUCTA* cs = (CREATESTRUCTA*)lParam;
+        CREATESTRUCTW* cs = (CREATESTRUCTW*)lParam;
         AppState* passed = (AppState*)cs->lpCreateParams;
         if (passed)
         {
@@ -542,16 +542,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
-    WNDCLASSEXA wc = { 0 };
+    // Use Unicode window class and CreateWindowExW to ensure the caption is set correctly
+    WNDCLASSEXW wc = { 0 };
     wc.cbSize = sizeof(wc);
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.lpszClassName = "MandelbrotWindowClass";
+    wc.lpszClassName = L"MandelbrotWindowClass";
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 
-    if (!RegisterClassExA(&wc))
+    if (!RegisterClassExW(&wc))
     {
         MessageBoxA(NULL, "RegisterClassEx failed", "Error", MB_ICONERROR);
         return 1;
@@ -560,7 +561,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
     RECT r = { 0, 0, g_state.width, g_state.height };
     AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, FALSE);
 
-    HWND hwnd = CreateWindowExA(0, wc.lpszClassName, "Mandelbrot Renderer", WS_OVERLAPPEDWINDOW,
+    // Create window with a Unicode title
+    HWND hwnd = CreateWindowExW(0, wc.lpszClassName, L"Mandelbrot Renderer", WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT, r.right - r.left, r.bottom - r.top,
         NULL, NULL, hInstance, &g_state);
 
@@ -569,6 +571,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
         MessageBoxA(NULL, "CreateWindowEx failed", "Error", MB_ICONERROR);
         return 1;
     }
+
+    // Explicitly set the Unicode window title as well (defensive)
+    SetWindowTextW(hwnd, L"Mandelbrot Renderer");
 
     // Mark global state as not owned
     g_state.owned = false;
