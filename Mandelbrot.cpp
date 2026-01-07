@@ -22,8 +22,10 @@
 
 struct AppState
 {
-    int width = 800;
-    int height = 600;
+//    int width = 800;
+//    int height = 600;
+    int width = 1600;
+    int height = 1200;
     HBITMAP hBitmap = nullptr;
     void* pixels = nullptr; // pointer returned by CreateDIBSection
     BITMAPINFO bmi;
