@@ -233,14 +233,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 s->owned = false;
             }
             SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(s));
-    
+
             // Create initial bitmap sized to client area
             RECT client;
             GetClientRect(hwnd, &client);
             CreateOrResizeBitmap(*s, (client.right - client.left), (client.bottom - client.top));
             return 0;
         }
-    
+
         case WM_SIZE:
         {
             if (!s) break;
@@ -253,7 +253,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             }
             return 0;
         }
-    
+
         case WM_LBUTTONDOWN:
         {
             if (!s) break;
@@ -270,7 +270,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                     return 0;
                 }
             }
-    
+
             // Otherwise, start panning (original behavior)
             s->dragging = true;
             s->dragStart.x = mx;
@@ -280,7 +280,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             SetCapture(hwnd);
             return 0;
         }
-    
+
         case WM_LBUTTONUP:
         {
             if (!s) break;
@@ -288,7 +288,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             ReleaseCapture();
             return 0;
         }
-    
+
         case WM_MOUSEMOVE:
         {
             if (!s) break;
@@ -307,7 +307,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             {
                 int x = LOWORD(lParam);
                 int y = HIWORD(lParam);
-    
+
                 int startX = s->selStart.x;
                 int startY = s->selStart.y;
                 int dx = x - startX;
@@ -316,11 +316,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 int signY = (dy >= 0) ? 1 : -1;
                 int absDx = (dx >= 0) ? dx : -dx;
                 int absDy = (dy >= 0) ? dy : -dy;
-    
+
                 // Keep selection aspect ratio equal to client area aspect ratio
                 double aspect = (double)s->width / (double)s->height;
                 double desiredW = 0.0, desiredH = 0.0;
-    
+
                 if (absDx == 0 && absDy == 0)
                 {
                     desiredW = desiredH = 0.0;
@@ -351,10 +351,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                         desiredH = desiredW / aspect;
                     }
                 }
-    
+
                 int adjW = (int)(desiredW + 0.5);
                 int adjH = (int)(desiredH + 0.5);
-    
+
                 s->selRect.left = startX;
                 s->selRect.top = startY;
                 s->selRect.right = startX + signX * adjW;
@@ -362,10 +362,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 NormalizeRect(s->selRect);
                 InvalidateRect(hwnd, NULL, FALSE);
             }
-    
+
             return 0;
         }
-    
+
         case WM_RBUTTONDOWN:
         {
             if (!s) break;
@@ -379,7 +379,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             InvalidateRect(hwnd, NULL, FALSE);
             return 0;
         }
-    
+
         case WM_RBUTTONUP:
         {
             if (!s) break;
@@ -399,7 +399,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             InvalidateRect(hwnd, NULL, FALSE);
             return 0;
         }
-    
+
         case WM_MOUSEWHEEL:
         {
             if (!s) break;
@@ -407,28 +407,28 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             POINT mp;
             mp.x = GET_X_LPARAM(lParam);
             mp.y = GET_Y_LPARAM(lParam);
-    
+
             // Convert to client coordinates
             ScreenToClient(hwnd, &mp);
-    
+
             double oldScale = s->scale;
             double factor = (delta > 0) ? 0.8 : 1.25;
             // Use exponential for smooth zoom
             double zoomFactor = pow(factor, abs(delta) / 120.0);
             double newScale = oldScale * zoomFactor;
-    
+
             // Keep mouse point stable in world coords
             double worldX = s->centerX + (mp.x - s->width / 2.0) * oldScale;
             double worldY = s->centerY + (mp.y - s->height / 2.0) * oldScale;
             s->centerX = worldX - (mp.x - s->width / 2.0) * newScale;
             s->centerY = worldY - (mp.y - s->height / 2.0) * newScale;
             s->scale = newScale;
-    
+
             s->needRender = true;
             InvalidateRect(hwnd, NULL, FALSE);
             return 0;
         }
-    
+
         case WM_KEYDOWN:
         {
             if (!s) break;
@@ -459,18 +459,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             }
             return 0;
         }
-    
+
         case WM_PAINT:
         {
             if (!s) break;
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
-    
+
             if (s->needRender)
             {
                 RenderMandelbrot(*s);
             }
-    
+
             if (s->hBitmap)
             {
                 HDC memDC = CreateCompatibleDC(hdc);
@@ -483,7 +483,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             {
                 FillRect(hdc, &ps.rcPaint, reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1));
             }
-    
+
             // Draw simple overlay text
             {
                 std::string info = "Center: " + std::to_string(s->centerX) + ", " + std::to_string(s->centerY)
@@ -493,13 +493,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 RECT r = { 8, 8, s->width - 8, 40 };
                 DrawTextA(hdc, info.c_str(), static_cast<int>(info.size()), &r, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX);
             }
-    
+
             // Draw selection rectangle overlay if any
             if (s->selecting || s->hasSelection)
             {
                 RECT r = s->selRect;
                 NormalizeRect(r);
-    
+
                 // Draw a solid rectangle with a semi-transparent fill-like border (GDI has no alpha here,
                 // so we do a simple dashed frame and XOR focus rect for visibility).
                 HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
@@ -509,15 +509,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 SelectObject(hdc, oldBrush);
                 SelectObject(hdc, oldPen);
                 DeleteObject(hPen);
-    
+
                 // Draw a focus rect for extra visibility
                 DrawFocusRect(hdc, &r);
             }
-    
+
             EndPaint(hwnd, &ps);
             return 0;
         }
-    
+
         case WM_DESTROY:
         {
             if (s)
@@ -599,4 +599,3 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
     }
     return (int)msg.wParam;
 }
-
