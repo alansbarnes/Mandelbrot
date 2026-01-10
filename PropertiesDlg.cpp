@@ -2,6 +2,7 @@
 #include "resource.h"
 #include <string>
 #include <cstdlib> // for atof
+#include <commctrl.h> // for NMUPDOWN
 
 MandelbrotProperties g_props = {
     50,    // maxIter
@@ -34,6 +35,21 @@ static int GetDlgInt(HWND hDlg, int controlId)
     return atoi(buf);
 }
 
+static int MapSpinToBuddy(int spinId)
+{
+    switch (spinId)
+    {
+    case IDC_MAX_ITER_SPIN:     return IDC_MAX_ITER;
+    case IDC_RED_MIN_SPIN:      return IDC_RED_MIN;
+    case IDC_RED_MAX_SPIN:      return IDC_RED_MAX;
+    case IDC_GREEN_MIN_SPIN:    return IDC_GREEN_MIN;
+    case IDC_GREEN_MAX_SPIN:    return IDC_GREEN_MAX;
+    case IDC_BLUE_MIN_SPIN:     return IDC_BLUE_MIN;
+    case IDC_BLUE_MAX_SPIN:     return IDC_BLUE_MAX;
+    default: return 0;
+    }
+}
+
 INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
@@ -51,6 +67,31 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
         SetDlgItemInt(hDlg, IDC_BLUE_MIN, g_props.bmin, FALSE);
         SetDlgItemInt(hDlg, IDC_BLUE_MAX, g_props.bmax, FALSE);
         return (INT_PTR)TRUE;
+
+    case WM_NOTIFY:
+    {
+        LPNMHDR hdr = (LPNMHDR)lParam;
+        if (hdr && hdr->code == UDN_DELTAPOS)
+        {
+            LPNMUPDOWN p = (LPNMUPDOWN)lParam;
+            int spinId = (int)hdr->idFrom;
+            int buddyId = MapSpinToBuddy(spinId);
+            if (buddyId != 0)
+            {
+                // Read current integer value, apply the inverted delta and write it back.
+                // Invert the requested delta so arrow keys/arrows operate in the opposite direction.
+                BOOL translated = FALSE;
+                UINT cur = GetDlgItemInt(hDlg, buddyId, &translated, FALSE);
+                int newVal = (int)cur - p->iDelta; // invert direction
+                SetDlgItemInt(hDlg, buddyId, newVal, FALSE);
+
+                // Indicate we've handled the notification so the control won't also
+                // do its automatic buddy update (we removed UDS_SETBUDDYINT to be safe).
+                return (INT_PTR)TRUE;
+            }
+        }
+        break;
+    }
 
     case WM_COMMAND:
         if (LOWORD(wParam) == IDOK)
