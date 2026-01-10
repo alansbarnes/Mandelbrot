@@ -85,6 +85,9 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
                 int newVal = (int)cur - p->iDelta; // invert direction
                 SetDlgItemInt(hDlg, buddyId, newVal, FALSE);
 
+                BOOL success;
+                g_props.maxIter = (int)GetDlgItemInt(hDlg, IDC_MAX_ITER, &success, FALSE);
+
                 // Indicate we've handled the notification so the control won't also
                 // do its automatic buddy update (we removed UDS_SETBUDDYINT to be safe).
                 return (INT_PTR)TRUE;
