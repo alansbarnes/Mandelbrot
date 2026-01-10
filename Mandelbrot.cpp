@@ -43,7 +43,7 @@ struct AppState
     double centerY = 0.0;
     double scale = 3.0 / 800.0; // complex units per pixel (initial)
     //    int maxIter = 900;
-    int maxIter = 100;
+    int maxIter = 50;
     bool dragging = false;
     POINT dragStart;
     double dragCenterX, dragCenterY;
