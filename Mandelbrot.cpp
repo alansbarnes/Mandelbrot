@@ -626,6 +626,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
     {
         HMENU hFile = CreatePopupMenu();
         AppendMenuW(hFile, MF_STRING, ID_VIEW_RESET, L"&Reset\tR");
+        AppendMenuW(hFile, MF_STRING, IDM_PROPERTIES, L"&Properties");
         AppendMenuW(hFile, MF_SEPARATOR, 0, NULL);
         AppendMenuW(hFile, MF_STRING, ID_FILE_EXIT, L"E&xit\tEsc");
         AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hFile, L"&File");
