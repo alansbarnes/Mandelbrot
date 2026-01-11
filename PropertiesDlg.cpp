@@ -4,7 +4,9 @@
 #include <cstdlib> // for atof
 #include <commctrl.h> // for NMUPDOWN
 
-MandelbrotProperties g_props = {
+AppState g_state;
+
+/*MandelbrotProperties g_props = {
     50,    // maxIter
     0.0,   // centerReal
     0.0,   // centerImag
@@ -12,7 +14,7 @@ MandelbrotProperties g_props = {
     100, 255, // rmin, rmax
     0, 255,   // gmin, gmax
     0, 0      // bmin, bmax
-};
+};*/
 
 static void SetDlgDouble(HWND hDlg, int controlId, double value)
 {
@@ -56,16 +58,16 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
     {
     case WM_INITDIALOG:
         // Initialize controls from g_props
-        SetDlgItemInt(hDlg, IDC_MAX_ITER, g_props.maxIter, FALSE);
-        SetDlgDouble(hDlg, IDC_CENTER_REAL, g_props.centerReal);
-        SetDlgDouble(hDlg, IDC_CENTER_IMAG, g_props.centerImag);
-        SetDlgDouble(hDlg, IDC_HEIGHT, g_props.height);
-        SetDlgItemInt(hDlg, IDC_RED_MIN, g_props.rmin, FALSE);
-        SetDlgItemInt(hDlg, IDC_RED_MAX, g_props.rmax, FALSE);
-        SetDlgItemInt(hDlg, IDC_GREEN_MIN, g_props.gmin, FALSE);
-        SetDlgItemInt(hDlg, IDC_GREEN_MAX, g_props.gmax, FALSE);
-        SetDlgItemInt(hDlg, IDC_BLUE_MIN, g_props.bmin, FALSE);
-        SetDlgItemInt(hDlg, IDC_BLUE_MAX, g_props.bmax, FALSE);
+        SetDlgItemInt(hDlg, IDC_MAX_ITER, g_state.maxIter, FALSE);
+        SetDlgDouble(hDlg, IDC_CENTER_REAL, g_state.centerX);
+        SetDlgDouble(hDlg, IDC_CENTER_IMAG, g_state.centerY);
+        SetDlgDouble(hDlg, IDC_HEIGHT, g_state.height * g_state.scale);
+        SetDlgItemInt(hDlg, IDC_RED_MIN, g_state.rmin, FALSE);
+        SetDlgItemInt(hDlg, IDC_RED_MAX, g_state.rmax, FALSE);
+        SetDlgItemInt(hDlg, IDC_GREEN_MIN, g_state.gmin, FALSE);
+        SetDlgItemInt(hDlg, IDC_GREEN_MAX, g_state.gmax, FALSE);
+        SetDlgItemInt(hDlg, IDC_BLUE_MIN, g_state.bmin, FALSE);
+        SetDlgItemInt(hDlg, IDC_BLUE_MAX, g_state.bmax, FALSE);
         return (INT_PTR)TRUE;
 
     case WM_NOTIFY:
@@ -85,9 +87,6 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
                 int newVal = (int)cur - p->iDelta; // invert direction
                 SetDlgItemInt(hDlg, buddyId, newVal, FALSE);
 
-                BOOL success;
-                g_props.maxIter = (int)GetDlgItemInt(hDlg, IDC_MAX_ITER, &success, FALSE);
-
                 // Indicate we've handled the notification so the control won't also
                 // do its automatic buddy update (we removed UDS_SETBUDDYINT to be safe).
                 return (INT_PTR)TRUE;
@@ -100,19 +99,22 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
         if (LOWORD(wParam) == IDOK)
         {
             // Read values back into g_props
-            g_props.maxIter = GetDlgItemInt(hDlg, IDC_MAX_ITER, nullptr, FALSE);
-            g_props.centerReal = GetDlgDouble(hDlg, IDC_CENTER_REAL);
-            g_props.centerImag = GetDlgDouble(hDlg, IDC_CENTER_IMAG);
-            g_props.height = GetDlgDouble(hDlg, IDC_HEIGHT);
-
-            g_props.rmin = GetDlgInt(hDlg, IDC_RED_MIN);
-            g_props.rmax = GetDlgInt(hDlg, IDC_RED_MAX);
-            g_props.gmin = GetDlgInt(hDlg, IDC_GREEN_MIN);
-            g_props.gmax = GetDlgInt(hDlg, IDC_GREEN_MAX);
-            g_props.bmin = GetDlgInt(hDlg, IDC_BLUE_MIN);
-            g_props.bmax = GetDlgInt(hDlg, IDC_BLUE_MAX);
+            g_state.maxIter = GetDlgItemInt(hDlg, IDC_MAX_ITER, nullptr, FALSE);
+            g_state.centerX = GetDlgDouble(hDlg, IDC_CENTER_REAL);
+            g_state.centerY = GetDlgDouble(hDlg, IDC_CENTER_IMAG);
+            g_state.height = (int)(GetDlgDouble(hDlg, IDC_HEIGHT) / g_state.scale);
+            g_state.rmin = GetDlgInt(hDlg, IDC_RED_MIN);
+            g_state.rmax = GetDlgInt(hDlg, IDC_RED_MAX);
+            g_state.gmin = GetDlgInt(hDlg, IDC_GREEN_MIN);
+            g_state.gmax = GetDlgInt(hDlg, IDC_GREEN_MAX);
+            g_state.bmin = GetDlgInt(hDlg, IDC_BLUE_MIN);
+            g_state.bmax = GetDlgInt(hDlg, IDC_BLUE_MAX);
 
             EndDialog(hDlg, IDOK);
+
+            ApplySelectionToWindow(GetParent(hDlg));
+            g_state.needRender = TRUE;
+            InvalidateRect(GetParent(hDlg), nullptr, FALSE);
             return (INT_PTR)TRUE;
         }
         else if (LOWORD(wParam) == IDCANCEL)
