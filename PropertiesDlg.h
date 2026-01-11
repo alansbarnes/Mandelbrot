@@ -2,18 +2,7 @@
 #pragma once
 #include <windows.h>
 
-// Structure to hold properties (example)
-/*struct MandelbrotProperties {
-    int maxIter;
-    double centerReal;
-    double centerImag;
-    double height;
-    int rmin, rmax;
-    int gmin, gmax;
-    int bmin, bmax;
-};*/
-
-extern "C" struct AppState
+struct AppState
 {
     //    int width = 800;
     //    int height = 600;
@@ -44,9 +33,6 @@ extern "C" struct AppState
     // Ownership: whether this AppState was heap-allocated (for new windows)
     bool owned = false;
 };
-
-
-//extern MandelbrotProperties g_props;
 
 INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 void ApplySelectionToWindow(HWND hwnd);
