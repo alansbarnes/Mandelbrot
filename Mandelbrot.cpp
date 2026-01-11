@@ -130,22 +130,9 @@ static void RenderMandelbrot()
             }
             else
             {
-                // smooth coloring
-                double log_zn = log(zx2 + zy2) / 2.0;
-                double nu = log(log_zn / log(2.0)) / log(2.0);
-                double mu = iter + 1 - nu;
-                double hue = fmod(360.0 * mu / maxIter + 360.0, 360.0); // wrap
-                double sat = 1.0;
-                double val = 1.0;
-                HSVtoRGB(hue, sat, val, r, g, b);
-
-                // optionally, reduce brightness for low iteration counts:
-                double t = static_cast<double>(iter) / maxIter;
-                // enhance contrast
-                double brightness = 0.5 + 0.5 * t;
-                r = static_cast<uint8_t>(r * brightness);
-                g = static_cast<uint8_t>(g * brightness);
-                b = static_cast<uint8_t>(b * brightness);
+                r = g_state.rmin + (((g_state.rmax - g_state.rmin) * iter) / maxIter);
+                g = g_state.gmin + (((g_state.gmax - g_state.gmin) * iter) / maxIter);
+                b = g_state.bmin + (((g_state.bmax - g_state.bmin) * iter) / maxIter);
             }
 
             // For 32bpp DIB (BI_RGB) the memory order is generally B, G, R, [0]
@@ -191,392 +178,347 @@ void ApplySelectionToWindow(HWND hwnd)
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    // Retrieve per-window AppState pointer
-//    AppState* s = reinterpret_cast<AppState*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
-
     switch (msg)
     {
-    case WM_CREATE:
-    {
-        // The lpCreateParams contains the AppState* we passed when creating the window
-     /*   CREATESTRUCTW* cs = reinterpret_cast<CREATESTRUCTW*>(lParam);
-        AppState* passed = nullptr;
-        if (cs)
+        case WM_CREATE:
         {
-            passed = reinterpret_cast<AppState*>(cs->lpCreateParams);
-        }
-        if (passed)
-        {
-             = passed;
-        }
-        else
-        {
-            // fallback to global state if none provided
-            s = &g_state;
-            s->owned = false;
-        }
-        SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(s));
-      */
-        g_state.rmin = 100;
-        g_state.rmax = 255;
-        g_state.gmin = 0;
-        g_state.gmax = 255;
-        g_state.bmin = 0;
-        g_state.bmax = 0;
+            g_state.rmin = 100;
+            g_state.rmax = 255;
+            g_state.gmin = 0;
+            g_state.gmax = 255;
+            g_state.bmin = 0;
+            g_state.bmax = 0;
 
-        // Create initial bitmap sized to client area
-        RECT client;
-        GetClientRect(hwnd, &client);
-        CreateOrResizeBitmap((client.right - client.left), (client.bottom - client.top));
-        return 0;
-    }
-
-    case WM_SIZE:
-    {
-    //    if (!s) break;
-        int w = LOWORD(lParam);
-        int h = HIWORD(lParam);
-        if (w > 0 && h > 0)
-        {
-            CreateOrResizeBitmap(w, h);
-            InvalidateRect(hwnd, NULL, FALSE);
+            // Create initial bitmap sized to client area
+            RECT client;
+            GetClientRect(hwnd, &client);
+            CreateOrResizeBitmap((client.right - client.left), (client.bottom - client.top));
+            return 0;
         }
-        return 0;
-    }
 
-    case WM_COMMAND:
-    {
-    //    if (!s) break;
-        int id = LOWORD(wParam);
-        switch (id)
+        case WM_SIZE:
         {
-        case IDM_PROPERTIES:
-            DialogBox(nullptr, MAKEINTRESOURCE(IDD_PROPERTIES), hwnd, PropertiesDlgProc);
-            // After the dialog returns and if IDOK, you can use g_props values
-            // to update drawing parameters and invalidate window to redraw.
-            break;
-        case ID_FILE_EXIT:
-            PostMessage(hwnd, WM_CLOSE, 0, 0);
-            break;
-        case ID_VIEW_RESET:
-            g_state.centerX = -0.75;
-            g_state.centerY = 0.0;
-            g_state.scale = 3.0 / 800.0;
-            g_state.needRender = true;
-            InvalidateRect(hwnd, NULL, FALSE);
-            break;
-        case ID_ITER_INC:
-            g_state.maxIter = static_cast<int>(g_state.maxIter * 1.25) + 10;
-            if (g_state.maxIter > 5000) g_state.maxIter = 5000;
-            g_state.needRender = true;
-            InvalidateRect(hwnd, NULL, FALSE);
-            break;
-        case ID_ITER_DEC:
-            g_state.maxIter = static_cast<int>(g_state.maxIter * 0.8) - 10;
-            if (g_state.maxIter < 10) g_state.maxIter = 10;
-            g_state.needRender = true;
-            InvalidateRect(hwnd, NULL, FALSE);
-            break;
-        case ID_HELP_ABOUT:
-            MessageBoxW(hwnd, L"Mandelbrot Renderer\n\nSimple Win32 Mandelbrot explorer", L"About", MB_OK | MB_ICONINFORMATION);
-            break;
-        }
-        return 0;
-    }
-
-    case WM_LBUTTONDOWN:
-    {
-        //if (!s) break;
-        int mx = LOWORD(lParam);
-        int my = HIWORD(lParam);
-        // If there's an existing selection and the click is inside it, apply that selection to this window.
-        if (g_state.hasSelection)
-        {
-            RECT sel = g_state.selRect;
-            NormalizeRect(sel);
-            if (PointInRectEx(sel, mx, my))
+            int w = LOWORD(lParam);
+            int h = HIWORD(lParam);
+            if (w > 0 && h > 0)
             {
-                ApplySelectionToWindow(hwnd);
-                return 0;
-            }
-            else
-            {
-                // Clicking outside the selection cancels it.
-                g_state.hasSelection = false;
-                g_state.selRect = { 0, 0, 0, 0 };
+                CreateOrResizeBitmap(w, h);
                 InvalidateRect(hwnd, NULL, FALSE);
-                // fall through to start panning
             }
+            return 0;
         }
 
-        // Otherwise, start panning (original behavior)
-        g_state.dragging = true;
-        g_state.dragStart.x = mx;
-        g_state.dragStart.y = my;
-        g_state.dragCenterX = g_state.centerX;
-        g_state.dragCenterY = g_state.centerY;
-        SetCapture(hwnd);
-        return 0;
-    }
-
-    case WM_LBUTTONUP:
-    {
-//        if (!s) break;
-        g_state.dragging = false;
-        ReleaseCapture();
-        return 0;
-    }
-
-    case WM_MOUSEMOVE:
-    {
-    //    if (!s) break;
-        if (g_state.dragging)
+        case WM_COMMAND:
         {
-            int x = LOWORD(lParam);
-            int y = HIWORD(lParam);
-            int dx = x - g_state.dragStart.x;
-            int dy = y - g_state.dragStart.y;
-            g_state.centerX = g_state.dragCenterX - dx * g_state.scale;
-            g_state.centerY = g_state.dragCenterY - dy * g_state.scale;
-            g_state.needRender = true;
-            InvalidateRect(hwnd, NULL, FALSE);
+            int id = LOWORD(wParam);
+            switch (id)
+            {
+            case IDM_PROPERTIES:
+                DialogBox(nullptr, MAKEINTRESOURCE(IDD_PROPERTIES), hwnd, PropertiesDlgProc);
+                // After the dialog returns and if IDOK, you can use g_props values
+                // to update drawing parameters and invalidate window to redraw.
+                break;
+            case ID_FILE_EXIT:
+                PostMessage(hwnd, WM_CLOSE, 0, 0);
+                break;
+            case ID_VIEW_RESET:
+                g_state.centerX = -0.75;
+                g_state.centerY = 0.0;
+                g_state.scale = 3.0 / 800.0;
+                g_state.needRender = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+                break;
+            case ID_ITER_INC:
+                g_state.maxIter = static_cast<int>(g_state.maxIter * 1.25) + 10;
+                if (g_state.maxIter > 5000) g_state.maxIter = 5000;
+                g_state.needRender = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+                break;
+            case ID_ITER_DEC:
+                g_state.maxIter = static_cast<int>(g_state.maxIter * 0.8) - 10;
+                if (g_state.maxIter < 10) g_state.maxIter = 10;
+                g_state.needRender = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+                break;
+            case ID_HELP_ABOUT:
+                MessageBoxW(hwnd, L"Mandelbrot Renderer\n\nSimple Win32 Mandelbrot explorer", L"About", MB_OK | MB_ICONINFORMATION);
+                break;
+            }
+            return 0;
         }
-        else if (g_state.selecting)
+
+        case WM_LBUTTONDOWN:
         {
-            int x = LOWORD(lParam);
-            int y = HIWORD(lParam);
-
-            int startX = g_state.selStart.x;
-            int startY = g_state.selStart.y;
-            int dx = x - startX;
-            int dy = y - startY;
-            int signX = (dx >= 0) ? 1 : -1;
-            int signY = (dy >= 0) ? 1 : -1;
-            int absDx = (dx >= 0) ? dx : -dx;
-            int absDy = (dy >= 0) ? dy : -dy;
-
-            // Keep selection aspect ratio equal to client area aspect ratio
-            double aspect = (double)g_state.width / (double)g_state.height;
-            double desiredW = 0.0, desiredH = 0.0;
-
-            if (absDx == 0 && absDy == 0)
+            int mx = LOWORD(lParam);
+            int my = HIWORD(lParam);
+            // If there's an existing selection and the click is inside it, apply that selection to this window.
+            if (g_state.hasSelection)
             {
-                desiredW = desiredH = 0.0;
-            }
-            else if (absDy == 0)
-            {
-                // avoid divide-by-zero: base on width
-                desiredW = absDx;
-                desiredH = desiredW / aspect;
-            }
-            else if (absDx == 0)
-            {
-                desiredH = absDy;
-                desiredW = desiredH * aspect;
-            }
-            else
-            {
-                if ((double)absDx / (double)absDy > aspect)
+                RECT sel = g_state.selRect;
+                NormalizeRect(sel);
+                if (PointInRectEx(sel, mx, my))
                 {
-                    // width is proportionally larger than allowed -> limit width to match height
+                    ApplySelectionToWindow(hwnd);
+                    return 0;
+                }
+                else
+                {
+                    // Clicking outside the selection cancels it.
+                    g_state.hasSelection = false;
+                    g_state.selRect = { 0, 0, 0, 0 };
+                    InvalidateRect(hwnd, NULL, FALSE);
+                    // fall through to start panning
+                }
+            }
+
+            // Otherwise, start panning (original behavior)
+            g_state.dragging = true;
+            g_state.dragStart.x = mx;
+            g_state.dragStart.y = my;
+            g_state.dragCenterX = g_state.centerX;
+            g_state.dragCenterY = g_state.centerY;
+            SetCapture(hwnd);
+            return 0;
+        }
+
+        case WM_LBUTTONUP:
+        {
+            g_state.dragging = false;
+            ReleaseCapture();
+            return 0;
+        }
+
+        case WM_MOUSEMOVE:
+        {
+            if (g_state.dragging)
+            {
+                int x = LOWORD(lParam);
+                int y = HIWORD(lParam);
+                int dx = x - g_state.dragStart.x;
+                int dy = y - g_state.dragStart.y;
+                g_state.centerX = g_state.dragCenterX - dx * g_state.scale;
+                g_state.centerY = g_state.dragCenterY - dy * g_state.scale;
+                g_state.needRender = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+            else if (g_state.selecting)
+            {
+                int x = LOWORD(lParam);
+                int y = HIWORD(lParam);
+
+                int startX = g_state.selStart.x;
+                int startY = g_state.selStart.y;
+                int dx = x - startX;
+                int dy = y - startY;
+                int signX = (dx >= 0) ? 1 : -1;
+                int signY = (dy >= 0) ? 1 : -1;
+                int absDx = (dx >= 0) ? dx : -dx;
+                int absDy = (dy >= 0) ? dy : -dy;
+
+                // Keep selection aspect ratio equal to client area aspect ratio
+                double aspect = (double)g_state.width / (double)g_state.height;
+                double desiredW = 0.0, desiredH = 0.0;
+
+                if (absDx == 0 && absDy == 0)
+                {
+                    desiredW = desiredH = 0.0;
+                }
+                else if (absDy == 0)
+                {
+                    // avoid divide-by-zero: base on width
+                    desiredW = absDx;
+                    desiredH = desiredW / aspect;
+                }
+                else if (absDx == 0)
+                {
                     desiredH = absDy;
                     desiredW = desiredH * aspect;
                 }
                 else
                 {
-                    // height is proportionally larger -> limit height to match width
-                    desiredW = absDx;
-                    desiredH = desiredW / aspect;
+                    if ((double)absDx / (double)absDy > aspect)
+                    {
+                        // width is proportionally larger than allowed -> limit width to match height
+                        desiredH = absDy;
+                        desiredW = desiredH * aspect;
+                    }
+                    else
+                    {
+                        // height is proportionally larger -> limit height to match width
+                        desiredW = absDx;
+                        desiredH = desiredW / aspect;
+                    }
                 }
+
+                int adjW = (int)(desiredW + 0.5);
+                int adjH = (int)(desiredH + 0.5);
+
+                g_state.selRect.left = startX;
+                g_state.selRect.top = startY;
+                g_state.selRect.right = startX + signX * adjW;
+                g_state.selRect.bottom = startY + signY * adjH;
+                NormalizeRect(g_state.selRect);
+                InvalidateRect(hwnd, NULL, FALSE);
             }
 
-            int adjW = (int)(desiredW + 0.5);
-            int adjH = (int)(desiredH + 0.5);
+            return 0;
+        }
 
-            g_state.selRect.left = startX;
-            g_state.selRect.top = startY;
-            g_state.selRect.right = startX + signX * adjW;
-            g_state.selRect.bottom = startY + signY * adjH;
+        case WM_RBUTTONDOWN:
+        {
+            g_state.selecting = true;
+            g_state.selStart.x = LOWORD(lParam);
+            g_state.selStart.y = HIWORD(lParam);
+            g_state.selRect.left = g_state.selRect.right = g_state.selStart.x;
+            g_state.selRect.top = g_state.selRect.bottom = g_state.selStart.y;
+            g_state.hasSelection = false; // selection being created/changed
+            SetCapture(hwnd);
+            InvalidateRect(hwnd, NULL, FALSE);
+            return 0;
+        }
+
+        case WM_RBUTTONUP:
+        {
+            g_state.selecting = false;
+            ReleaseCapture();
             NormalizeRect(g_state.selRect);
+            // ignore too-small selections (click without drag)
+            int selW = g_state.selRect.right - g_state.selRect.left;
+            int selH = g_state.selRect.bottom - g_state.selRect.top;
+            if (selW <= 4 || selH <= 4) {
+                g_state.hasSelection = false;
+            }
+            else
+            {
+                g_state.hasSelection = true;
+            }
             InvalidateRect(hwnd, NULL, FALSE);
+            return 0;
         }
 
-        return 0;
-    }
-
-    case WM_RBUTTONDOWN:
-    {
-        //if (!s) break;
-        g_state.selecting = true;
-        g_state.selStart.x = LOWORD(lParam);
-        g_state.selStart.y = HIWORD(lParam);
-        g_state.selRect.left = g_state.selRect.right = g_state.selStart.x;
-        g_state.selRect.top = g_state.selRect.bottom = g_state.selStart.y;
-        g_state.hasSelection = false; // selection being created/changed
-        SetCapture(hwnd);
-        InvalidateRect(hwnd, NULL, FALSE);
-        return 0;
-    }
-
-    case WM_RBUTTONUP:
-    {
-    //    if (!s) break;
-        g_state.selecting = false;
-        ReleaseCapture();
-        NormalizeRect(g_state.selRect);
-        // ignore too-small selections (click without drag)
-        int selW = g_state.selRect.right - g_state.selRect.left;
-        int selH = g_state.selRect.bottom - g_state.selRect.top;
-        if (selW <= 4 || selH <= 4) {
-            g_state.hasSelection = false;
-        }
-        else
+        case WM_MOUSEWHEEL:
         {
-            g_state.hasSelection = true;
-        }
-        InvalidateRect(hwnd, NULL, FALSE);
-        return 0;
-    }
+            int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+            POINT mp;
+            mp.x = GET_X_LPARAM(lParam);
+            mp.y = GET_Y_LPARAM(lParam);
 
-    case WM_MOUSEWHEEL:
-    {
-//        if (!s) break;
-        int delta = GET_WHEEL_DELTA_WPARAM(wParam);
-        POINT mp;
-        mp.x = GET_X_LPARAM(lParam);
-        mp.y = GET_Y_LPARAM(lParam);
+            // Convert to client coordinates
+            ScreenToClient(hwnd, &mp);
 
-        // Convert to client coordinates
-        ScreenToClient(hwnd, &mp);
+            double oldScale = g_state.scale;
+            double factor = (delta > 0) ? 0.8 : 1.25;
+            // Use exponential for smooth zoom
+            double zoomFactor = pow(factor, abs(delta) / 120.0);
+            double newScale = oldScale * zoomFactor;
 
-        double oldScale = g_state.scale;
-        double factor = (delta > 0) ? 0.8 : 1.25;
-        // Use exponential for smooth zoom
-        double zoomFactor = pow(factor, abs(delta) / 120.0);
-        double newScale = oldScale * zoomFactor;
+            // Keep mouse point stable in world coords
+            double worldX = g_state.centerX + (mp.x - g_state.width / 2.0) * oldScale;
+            double worldY = g_state.centerY + (mp.y - g_state.height / 2.0) * oldScale;
+            g_state.centerX = worldX - (mp.x - g_state.width / 2.0) * newScale;
+            g_state.centerY = worldY - (mp.y - g_state.height / 2.0) * newScale;
+            g_state.scale = newScale;
 
-        // Keep mouse point stable in world coords
-        double worldX = g_state.centerX + (mp.x - g_state.width / 2.0) * oldScale;
-        double worldY = g_state.centerY + (mp.y - g_state.height / 2.0) * oldScale;
-        g_state.centerX = worldX - (mp.x - g_state.width / 2.0) * newScale;
-        g_state.centerY = worldY - (mp.y - g_state.height / 2.0) * newScale;
-        g_state.scale = newScale;
-
-        g_state.needRender = true;
-        InvalidateRect(hwnd, NULL, FALSE);
-        return 0;
-    }
-
-    case WM_KEYDOWN:
-    {
-//        if (!s) break;
-        if (wParam == 'R')
-        {
-            g_state.centerX = -0.75;
-            g_state.centerY = 0.0;
-            g_state.scale = 3.0 / 800.0;
             g_state.needRender = true;
             InvalidateRect(hwnd, NULL, FALSE);
+            return 0;
         }
-        else if (wParam == VK_ESCAPE)
+
+        case WM_KEYDOWN:
         {
-            PostMessage(hwnd, WM_CLOSE, 0, 0);
+            if (wParam == 'R')
+            {
+                g_state.centerX = -0.75;
+                g_state.centerY = 0.0;
+                g_state.scale = 3.0 / 800.0;
+                g_state.needRender = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+            else if (wParam == VK_ESCAPE)
+            {
+                PostMessage(hwnd, WM_CLOSE, 0, 0);
+            }
+            else if (wParam == VK_ADD || wParam == VK_OEM_PLUS)
+            {
+                g_state.maxIter = static_cast<int>(g_state.maxIter * 1.25) + 10;
+                if (g_state.maxIter > 5000) g_state.maxIter = 5000;
+                g_state.needRender = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+            else if (wParam == VK_SUBTRACT || wParam == VK_OEM_MINUS) {
+                g_state.maxIter = static_cast<int>(g_state.maxIter * 0.8) - 10;
+                if (g_state.maxIter < 10) g_state.maxIter = 10;
+                g_state.needRender = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+            return 0;
         }
-        else if (wParam == VK_ADD || wParam == VK_OEM_PLUS)
+
+        case WM_PAINT:
         {
-            g_state.maxIter = static_cast<int>(g_state.maxIter * 1.25) + 10;
-            if (g_state.maxIter > 5000) g_state.maxIter = 5000;
-            g_state.needRender = true;
-            InvalidateRect(hwnd, NULL, FALSE);
-        }
-        else if (wParam == VK_SUBTRACT || wParam == VK_OEM_MINUS) {
-            g_state.maxIter = static_cast<int>(g_state.maxIter * 0.8) - 10;
-            if (g_state.maxIter < 10) g_state.maxIter = 10;
-            g_state.needRender = true;
-            InvalidateRect(hwnd, NULL, FALSE);
-        }
-        return 0;
-    }
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hwnd, &ps);
 
-    case WM_PAINT:
-    {
-//        if (!s) break;
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
+            if (g_state.needRender)
+            {
+                RenderMandelbrot();
+            }
 
-        if (g_state.needRender)
-        {
-            RenderMandelbrot();
-        }
+            if (g_state.hBitmap)
+            {
+                HDC memDC = CreateCompatibleDC(hdc);
+                HGDIOBJ old = SelectObject(memDC, g_state.hBitmap);
+                BitBlt(hdc, 0, 0, g_state.width, g_state.height, memDC, 0, 0, SRCCOPY);
+                SelectObject(memDC, old);
+                DeleteDC(memDC);
+            }
+            else
+            {
+                FillRect(hdc, &ps.rcPaint, reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1));
+            }
 
-        if (g_state.hBitmap)
-        {
-            HDC memDC = CreateCompatibleDC(hdc);
-            HGDIOBJ old = SelectObject(memDC, g_state.hBitmap);
-            BitBlt(hdc, 0, 0, g_state.width, g_state.height, memDC, 0, 0, SRCCOPY);
-            SelectObject(memDC, old);
-            DeleteDC(memDC);
-        }
-        else
-        {
-            FillRect(hdc, &ps.rcPaint, reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1));
-        }
+            // Draw simple overlay text
+            {
+                std::string info = "Center: " + std::to_string(g_state.centerX) + ", " + std::to_string(g_state.centerY)
+                    + "  Scale: " + std::to_string(g_state.scale) + "  Iter: " + std::to_string(g_state.maxIter);
+                SetTextColor(hdc, RGB(255, 255, 255));
+                SetBkMode(hdc, TRANSPARENT);
+                RECT r = { 8, 8, g_state.width - 8, 40 };
+                DrawTextA(hdc, info.c_str(), static_cast<int>(info.size()), &r, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX);
+            }
 
-        // Draw simple overlay text
-        {
-            std::string info = "Center: " + std::to_string(g_state.centerX) + ", " + std::to_string(g_state.centerY)
-                + "  Scale: " + std::to_string(g_state.scale) + "  Iter: " + std::to_string(g_state.maxIter);
-            SetTextColor(hdc, RGB(255, 255, 255));
-            SetBkMode(hdc, TRANSPARENT);
-            RECT r = { 8, 8, g_state.width - 8, 40 };
-            DrawTextA(hdc, info.c_str(), static_cast<int>(info.size()), &r, DT_LEFT | DT_SINGLELINE | DT_NOPREFIX);
-        }
+            // Draw selection rectangle overlay if any
+            if (g_state.selecting || g_state.hasSelection)
+            {
+                RECT r = g_state.selRect;
+                NormalizeRect(r);
 
-        // Draw selection rectangle overlay if any
-        if (g_state.selecting || g_state.hasSelection)
-        {
-            RECT r = g_state.selRect;
-            NormalizeRect(r);
+                // Draw a solid rectangle with a semi-transparent fill-like border (GDI has no alpha here,
+                // so we do a simple dashed frame and XOR focus rect for visibility).
+                HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
+                HGDIOBJ oldPen = SelectObject(hdc, hPen);
+                HGDIOBJ oldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+                Rectangle(hdc, r.left, r.top, r.right, r.bottom);
+                SelectObject(hdc, oldBrush);
+                SelectObject(hdc, oldPen);
+                DeleteObject(hPen);
 
-            // Draw a solid rectangle with a semi-transparent fill-like border (GDI has no alpha here,
-            // so we do a simple dashed frame and XOR focus rect for visibility).
-            HPEN hPen = CreatePen(PS_SOLID, 1, RGB(0, 0, 0));
-            HGDIOBJ oldPen = SelectObject(hdc, hPen);
-            HGDIOBJ oldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
-            Rectangle(hdc, r.left, r.top, r.right, r.bottom);
-            SelectObject(hdc, oldBrush);
-            SelectObject(hdc, oldPen);
-            DeleteObject(hPen);
+                // Draw a focus rect for extra visibility
+                DrawFocusRect(hdc, &r);
+            }
 
-            // Draw a focus rect for extra visibility
-            DrawFocusRect(hdc, &r);
+            EndPaint(hwnd, &ps);
+            return 0;
         }
 
-        EndPaint(hwnd, &ps);
-        return 0;
-    }
-
-    case WM_DESTROY:
-    {
-//        if (s)
+        case WM_DESTROY:
         {
             if (g_state.hBitmap) DeleteObject(g_state.hBitmap);
             g_state.hBitmap = nullptr;
             g_state.pixels = nullptr;
             PostQuitMessage(0);
-            // If this AppState was dynamically allocated for a created window, free it
-            /*if (s->owned)
-            {
-                delete s;
-                // Note: can't touch 's' after deleting; GWLP_USERDATA will be cleaned by system
-            }*/
+            return 0;
         }
-        /*else
-        {
-            PostQuitMessage(0);
-        }*/
-        return 0;
-    }
     }
 
     return DefWindowProc(hwnd, msg, wParam, lParam);
