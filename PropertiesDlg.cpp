@@ -78,6 +78,11 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 
                 switch (buddyId)
                 {
+                    case IDC_MAX_ITER:
+                    {
+                        newVal = max(0, newVal);
+                        break;
+                    }
                     case IDC_RED_MIN:
                     {
                         newVal = max(0, newVal);
