@@ -6,16 +6,6 @@
 
 AppState g_state;
 
-/*MandelbrotProperties g_props = {
-    50,    // maxIter
-    0.0,   // centerReal
-    0.0,   // centerImag
-    4.0,   // height
-    100, 255, // rmin, rmax
-    0, 255,   // gmin, gmax
-    0, 0      // bmin, bmax
-};*/
-
 static void SetDlgDouble(HWND hDlg, int controlId, double value)
 {
     char buf[64];
@@ -83,8 +73,49 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
                 // Read current integer value, apply the inverted delta and write it back.
                 // Invert the requested delta so arrow keys/arrows operate in the opposite direction.
                 BOOL translated = FALSE;
-                UINT cur = GetDlgItemInt(hDlg, buddyId, &translated, FALSE);
+                UINT cur = GetDlgInt(hDlg, buddyId);
                 int newVal = (int)cur - p->iDelta; // invert direction
+
+                switch (buddyId)
+                {
+                    case IDC_RED_MIN:
+                    {
+                        newVal = max(0, newVal);
+                        newVal = min(newVal, GetDlgInt(hDlg, IDC_RED_MAX));
+                        break;
+                    }
+                    case IDC_RED_MAX:
+                    {
+                        newVal = min(newVal, 255);
+                        newVal = max(GetDlgInt(hDlg, IDC_RED_MIN), newVal);
+                        break;
+                    }
+                    case IDC_GREEN_MIN:
+                    {
+                        newVal = max(0, newVal);
+                        newVal = min(newVal, GetDlgInt(hDlg, IDC_GREEN_MAX));
+                        break;
+                    }
+                    case IDC_GREEN_MAX:
+                    {
+                        newVal = min(newVal, 255);
+                        newVal = max(GetDlgInt(hDlg, IDC_GREEN_MIN), newVal);
+                        break;
+                    }
+                    case IDC_BLUE_MIN:
+                    {
+                        newVal = max(0, newVal);
+                        newVal = min(newVal, GetDlgInt(hDlg, IDC_BLUE_MAX));
+                        break;
+                    }
+                    case IDC_BLUE_MAX:
+                    {
+                        newVal = min(newVal, 255);
+                        newVal = max(GetDlgInt(hDlg, IDC_BLUE_MIN), newVal);
+                        break;
+                    }
+                }
+
                 SetDlgItemInt(hDlg, buddyId, newVal, FALSE);
 
                 // Indicate we've handled the notification so the control won't also
@@ -99,7 +130,7 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
         if (LOWORD(wParam) == IDOK)
         {
             // Read values back into g_props
-            g_state.maxIter = GetDlgItemInt(hDlg, IDC_MAX_ITER, nullptr, FALSE);
+            g_state.maxIter = GetDlgInt(hDlg, IDC_MAX_ITER);
             g_state.centerX = GetDlgDouble(hDlg, IDC_CENTER_REAL);
             g_state.centerY = GetDlgDouble(hDlg, IDC_CENTER_IMAG);
             g_state.height = (int)(GetDlgDouble(hDlg, IDC_HEIGHT) / g_state.scale);
