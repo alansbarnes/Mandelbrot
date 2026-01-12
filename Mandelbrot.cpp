@@ -104,7 +104,7 @@ static void RenderMandelbrot()
     // For each pixel
     for (int y = 0; y < h; ++y)
     {
-        double imag = cy + (y - h / 2.0) * scale;
+        double imag = cy - (y - h / 2.0) * scale;
         for (int x = 0; x < w; ++x)
         {
             double real = cx + (x - w / 2.0) * scale;
@@ -297,7 +297,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 int dx = x - g_state.dragStart.x;
                 int dy = y - g_state.dragStart.y;
                 g_state.centerX = g_state.dragCenterX - dx * g_state.scale;
-                g_state.centerY = g_state.dragCenterY - dy * g_state.scale;
+                g_state.centerY = g_state.dragCenterY + dy * g_state.scale;
                 g_state.needRender = true;
                 InvalidateRect(hwnd, NULL, FALSE);
             }
