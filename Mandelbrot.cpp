@@ -32,6 +32,17 @@ extern AppState g_state;
 #define ID_ITER_DEC     9004
 #define ID_HELP_ABOUT   9005
 
+static inline double PixelToWorldX(int px)
+{
+    return g_state.centerX + (px - (g_state.width / 2.0)) * g_state.scale;
+}
+
+static inline double PixelToWorldY(int py)
+{
+    // Note the '-' here: pixel y grows downward, world imaginary should grow upward.
+    return g_state.centerY - (py - (g_state.height / 2.0)) * g_state.scale;
+}
+
 static void NormalizeRect(RECT& r)
 {
     if (r.left > r.right) std::swap(r.left, r.right);
@@ -50,6 +61,7 @@ static void CreateOrResizeBitmap(int w, int h)
         DeleteObject(g_state.hBitmap);
         g_state.hBitmap = nullptr;
         g_state.pixels = nullptr;
+        g_state.pitch = 0; // clear pitch when freeing existing bitmap
     }
 
     g_state.width = w;
@@ -59,7 +71,7 @@ static void CreateOrResizeBitmap(int w, int h)
     ZeroMemory(&g_state.bmi, sizeof(g_state.bmi));
     g_state.bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     g_state.bmi.bmiHeader.biWidth = w;
-    g_state.bmi.bmiHeader.biHeight = -h; // top-down
+    g_state.bmi.bmiHeader.biHeight = -h; // negative = top-down DIB
     g_state.bmi.bmiHeader.biPlanes = 1;
     g_state.bmi.bmiHeader.biBitCount = 32;
     g_state.bmi.bmiHeader.biCompression = BI_RGB;
@@ -67,26 +79,12 @@ static void CreateOrResizeBitmap(int w, int h)
     void* bits = nullptr;
     g_state.hBitmap = CreateDIBSection(NULL, &g_state.bmi, DIB_RGB_COLORS, &bits, NULL, 0);
     g_state.pixels = bits;
-    g_state.needRender = true;
-}
 
-static void HSVtoRGB(double h, double s, double v, uint8_t& outR, uint8_t& outG, uint8_t& outB)
-{
-    // h in [0,360)
-    double c = v * s;
-    double hh = h / 60.0;
-    double x = c * (1 - fabs(fmod(hh, 2.0) - 1.0));
-    double r = 0, g = 0, b = 0;
-    if (0.0 <= hh && hh < 1.0) { r = c; g = x; b = 0; }
-    else if (1.0 <= hh && hh < 2.0) { r = x; g = c; b = 0; }
-    else if (2.0 <= hh && hh < 3.0) { r = 0; g = c; b = x; }
-    else if (3.0 <= hh && hh < 4.0) { r = 0; g = x; b = c; }
-    else if (4.0 <= hh && hh < 5.0) { r = x; g = 0; b = c; }
-    else { r = c; g = 0; b = x; }
-    double m = v - c;
-    outR = static_cast<uint8_t>(round((r + m) * 255.0));
-    outG = static_cast<uint8_t>(round((g + m) * 255.0));
-    outB = static_cast<uint8_t>(round((b + m) * 255.0));
+    // Compute pitch (bytes per scanline), DWORD-aligned:
+    int bpp = g_state.bmi.bmiHeader.biBitCount;
+    g_state.pitch = ((bpp * w + 31) / 32) * 4;
+
+    g_state.needRender = true;
 }
 
 static void RenderMandelbrot()
@@ -101,17 +99,24 @@ static void RenderMandelbrot()
 
     uint32_t* buf = static_cast<uint32_t*>(g_state.pixels);
 
-    // For each pixel
+    const double halfW = w / 2.0;
+    const double halfH = h / 2.0;
+
+    // If your surface has a row stride (pitch) different from w*4, use it.
+    // Example: size_t pitchPixels = g_state.pitch ? (g_state.pitch / 4) : (size_t)w;
+    size_t pitchPixels = (g_state.pitch && g_state.pitch > 0) ? (g_state.pitch / sizeof(uint32_t)) : (size_t)w;
+
     for (int y = 0; y < h; ++y)
     {
-        double imag = cy - (y - h / 2.0) * scale;
+        double imag = cy - (y - halfH) * scale;
+        uint32_t* row = buf + (size_t)y * pitchPixels;
         for (int x = 0; x < w; ++x)
         {
-            double real = cx + (x - w / 2.0) * scale;
+            double real = cx + (x - halfW) * scale; // <-- fixed mapping
 
             double zx = 0.0, zy = 0.0;
-            int iter = 0;
             double zx2 = 0.0, zy2 = 0.0;
+            int iter = 0;
 
             while (zx2 + zy2 <= 4.0 && iter < maxIter)
             {
@@ -130,14 +135,14 @@ static void RenderMandelbrot()
             }
             else
             {
-                r = g_state.rmin + (((g_state.rmax - g_state.rmin) * iter) / maxIter);
-                g = g_state.gmin + (((g_state.gmax - g_state.gmin) * iter) / maxIter);
-                b = g_state.bmin + (((g_state.bmax - g_state.bmin) * iter) / maxIter);
+                r = (uint8_t)(g_state.rmin + (((g_state.rmax - g_state.rmin) * iter) / maxIter));
+                g = (uint8_t)(g_state.gmin + (((g_state.gmax - g_state.gmin) * iter) / maxIter));
+                b = (uint8_t)(g_state.bmin + (((g_state.bmax - g_state.bmin) * iter) / maxIter));
             }
 
-            // For 32bpp DIB (BI_RGB) the memory order is generally B, G, R, [0]
-            uint32_t pixel = static_cast<uint32_t>(b) | (static_cast<uint32_t>(g) << 8) | (static_cast<uint32_t>(r) << 16);
-            buf[y * w + x] = pixel;
+            // memory order: B G R [A/0]
+            uint32_t pixel = (uint32_t)b | ((uint32_t)g << 8) | ((uint32_t)r << 16);
+            row[x] = pixel;
         }
     }
     g_state.needRender = false;
@@ -147,7 +152,6 @@ void ApplySelectionToWindow(HWND hwnd)
 {
     if (!g_state.hasSelection) return;
 
-    // Normalize and measure selection
     RECT sel = g_state.selRect;
     NormalizeRect(sel);
     int selW = sel.right - sel.left;
@@ -158,14 +162,14 @@ void ApplySelectionToWindow(HWND hwnd)
     double selCenterPx = (sel.left + sel.right) / 2.0;
     double selCenterPy = (sel.top + sel.bottom) / 2.0;
 
-    // world coords of selection center
-    double worldX = g_state.centerX + (selCenterPx - g_state.width / 2.0) * g_state.scale;
-    double worldY = g_state.centerY + (selCenterPy - g_state.height / 2.0) * g_state.scale;
+    // world coords of selection center (use PixelToWorldY with the correct sign)
+    double worldX = PixelToWorldX(static_cast<int>(selCenterPx + 0.5));
+    double worldY = PixelToWorldY(static_cast<int>(selCenterPy + 0.5));
 
     // new scale: selected width in pixels maps to full window width
     double newScale = g_state.scale * (static_cast<double>(selW) / static_cast<double>(g_state.width));
 
-    // apply to current AppState and re-render here
+    // apply to current AppState and re-render
     g_state.centerX = worldX;
     g_state.centerY = worldY;
     g_state.scale = newScale;
@@ -412,11 +416,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             double zoomFactor = pow(factor, abs(delta) / 120.0);
             double newScale = oldScale * zoomFactor;
 
-            // Keep mouse point stable in world coords
-            double worldX = g_state.centerX + (mp.x - g_state.width / 2.0) * oldScale;
-            double worldY = g_state.centerY + (mp.y - g_state.height / 2.0) * oldScale;
-            g_state.centerX = worldX - (mp.x - g_state.width / 2.0) * newScale;
-            g_state.centerY = worldY - (mp.y - g_state.height / 2.0) * newScale;
+            // Compute world position under mouse using the same sign convention as the renderer:
+            double worldX = PixelToWorldX(mp.x);
+            double worldY = PixelToWorldY(mp.y);
+
+            // New center: keep the world point under the mouse stationary:
+            // For X: worldX = newCenterX + (mp.x - halfW)*newScale  => newCenterX = worldX - (mp.x - halfW)*newScale
+            // For Y: worldY = newCenterY - (mp.y - halfH)*newScale  => newCenterY = worldY + (mp.y - halfH)*newScale
+            double halfW = g_state.width / 2.0;
+            double halfH = g_state.height / 2.0;
+
+            g_state.centerX = worldX - (mp.x - halfW) * newScale;
+            g_state.centerY = worldY + (mp.y - halfH) * newScale; // note the + here to match PixelToWorldY's '-'
+
             g_state.scale = newScale;
 
             g_state.needRender = true;
@@ -516,6 +528,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             if (g_state.hBitmap) DeleteObject(g_state.hBitmap);
             g_state.hBitmap = nullptr;
             g_state.pixels = nullptr;
+            g_state.pitch = 0;
             PostQuitMessage(0);
             return 0;
         }
