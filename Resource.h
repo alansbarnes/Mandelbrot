@@ -1,55 +1,74 @@
-//{{NO_DEPENDENCIES}}
-// Microsoft Visual C++ generated include file.
-// Used by Mandelbrot.rc
+#pragma once
 
-#define IDS_APP_TITLE			103
+/* Icons / dialogs */
+#define IDI_MANDELBROT      101
+#define IDI_SMALL           102
 
-#define IDM_PROPERTIES          40001
-#define IDD_PROPERTIES          201
+#define IDD_ABOUTBOX        110
+#define IDD_PROPERTIES      111
 
-// Dialog control IDs
-#define IDC_MAX_ITER            1001
-#define IDC_MAX_ITER_SPIN       1002
-#define IDC_CENTER_REAL         1003
-#define IDC_CENTER_IMAG         1004
-#define IDC_HEIGHT              1005
+/* Menu commands */
+#define IDM_PROPERTIES      40001
+#define IDM_EXIT            40002
+#define IDM_ABOUT           40003
 
-#define IDC_RED_MIN             1006
-#define IDC_RED_MIN_SPIN        1007
-#define IDC_RED_MAX             1008
-#define IDC_RED_MAX_SPIN        1009
+#define IDC_MANDELBROT      200
 
-#define IDC_GREEN_MIN           1010
-#define IDC_GREEN_MIN_SPIN      1011
-#define IDC_GREEN_MAX           1012
-#define IDC_GREEN_MAX_SPIN      1013
+/* Controls - provide both naming styles so .rc and .cpp both resolve */
 
-#define IDC_BLUE_MIN            1014
-#define IDC_BLUE_MIN_SPIN       1015
-#define IDC_BLUE_MAX            1016
-#define IDC_BLUE_MAX_SPIN       1017
+/* Maximum iteration */
+#define IDC_MAX_ITER        1000
+#define IDC_MAXITER         1000      /* alias used in the .rc */
+#define IDC_MAX_ITER_SPIN   1001
+#define IDC_SPIN_MAXITER    1001      /* alias used in the .rc */
 
-#define IDR_MAINFRAME			128
-#define IDD_MANDELBROT_DIALOG	102
-#define IDD_ABOUTBOX			103
-#define IDM_ABOUT				104
-#define IDM_EXIT				105
-#define IDI_MANDELBROT			107
-#define IDI_SMALL				108
-#define IDC_MANDELBROT			109
-#define IDC_MYICON				2
+/* Center / Height */
+#define IDC_CENTER_REAL     1002
+#define IDC_CENTER_IMAG     1003
+#define IDC_HEIGHT          1004
+
+/* Red range */
+#define IDC_RED_MIN         1010
+#define IDC_RMIN            1010
+#define IDC_RED_MIN_SPIN    1011
+#define IDC_SPIN_RMIN       1011
+#define IDC_RED_MAX         1012
+#define IDC_RMAX            1012
+#define IDC_RED_MAX_SPIN    1013
+#define IDC_SPIN_RMAX       1013
+
+/* Green range */
+#define IDC_GREEN_MIN       1020
+#define IDC_GMIN            1020
+#define IDC_GREEN_MIN_SPIN  1021
+#define IDC_SPIN_GMIN       1021
+#define IDC_GREEN_MAX       1022
+#define IDC_GMAX            1022
+#define IDC_GREEN_MAX_SPIN  1023
+#define IDC_SPIN_GMAX       1023
+
+/* Blue range */
+#define IDC_BLUE_MIN        1030
+#define IDC_BMIN            1030
+#define IDC_BLUE_MIN_SPIN   1031
+#define IDC_SPIN_BMIN       1031
+#define IDC_BLUE_MAX        1032
+#define IDC_BMAX            1032
+#define IDC_BLUE_MAX_SPIN   1033
+#define IDC_SPIN_BMAX       1033
+
+/* Strings */
+#define IDS_APP_TITLE       5000
+
+/* Standard fallbacks */
 #ifndef IDC_STATIC
-#define IDC_STATIC				-1
+#define IDC_STATIC          -1
 #endif
-// Next default values for new objects
-//
-#ifdef APSTUDIO_INVOKED
-#ifndef APSTUDIO_READONLY_SYMBOLS
 
-#define _APS_NO_MFC					130
-#define _APS_NEXT_RESOURCE_VALUE	129
-#define _APS_NEXT_COMMAND_VALUE		32771
-#define _APS_NEXT_CONTROL_VALUE		1000
-#define _APS_NEXT_SYMED_VALUE		110
+#ifndef IDOK
+#define IDOK                1
 #endif
+
+#ifndef IDCANCEL
+#define IDCANCEL            2
 #endif
