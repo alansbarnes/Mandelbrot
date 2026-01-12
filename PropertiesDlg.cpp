@@ -6,6 +6,18 @@
 
 AppState g_state;
 
+// Define the properties object declared extern in PropertiesDlg.h.
+// Initialize with values consistent with g_state defaults so the dialog has sane defaults.
+Properties g_props = {
+    g_state.maxIter,                 // maxIter (50)
+    g_state.centerX,                 // centerReal (-0.75)
+    g_state.centerY,                 // centerImag (0.0)
+    g_state.height * g_state.scale,  // height in world units (1200 * 3/800 = 4.5)
+    100, 255,                        // rmin, rmax
+    0, 255,                          // gmin, gmax
+    0, 0                             // bmin, bmax
+};
+
 static void SetDlgDouble(HWND hDlg, int controlId, double value)
 {
     char buf[64];
@@ -47,7 +59,7 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
     switch (message)
     {
     case WM_INITDIALOG:
-        // Initialize controls from g_props
+        // Initialize controls from g_state (existing behavior)
         SetDlgItemInt(hDlg, IDC_MAX_ITER, g_state.maxIter, FALSE);
         SetDlgDouble(hDlg, IDC_CENTER_REAL, g_state.centerX);
         SetDlgDouble(hDlg, IDC_CENTER_IMAG, g_state.centerY);
@@ -78,53 +90,50 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
 
                 switch (buddyId)
                 {
-                    case IDC_MAX_ITER:
-                    {
-                        newVal = max(0, newVal);
-                        break;
-                    }
-                    case IDC_RED_MIN:
-                    {
-                        newVal = max(0, newVal);
-                        newVal = min(newVal, GetDlgInt(hDlg, IDC_RED_MAX));
-                        break;
-                    }
-                    case IDC_RED_MAX:
-                    {
-                        newVal = min(newVal, 255);
-                        newVal = max(GetDlgInt(hDlg, IDC_RED_MIN), newVal);
-                        break;
-                    }
-                    case IDC_GREEN_MIN:
-                    {
-                        newVal = max(0, newVal);
-                        newVal = min(newVal, GetDlgInt(hDlg, IDC_GREEN_MAX));
-                        break;
-                    }
-                    case IDC_GREEN_MAX:
-                    {
-                        newVal = min(newVal, 255);
-                        newVal = max(GetDlgInt(hDlg, IDC_GREEN_MIN), newVal);
-                        break;
-                    }
-                    case IDC_BLUE_MIN:
-                    {
-                        newVal = max(0, newVal);
-                        newVal = min(newVal, GetDlgInt(hDlg, IDC_BLUE_MAX));
-                        break;
-                    }
-                    case IDC_BLUE_MAX:
-                    {
-                        newVal = min(newVal, 255);
-                        newVal = max(GetDlgInt(hDlg, IDC_BLUE_MIN), newVal);
-                        break;
-                    }
+                case IDC_MAX_ITER:
+                {
+                    newVal = max(0, newVal);
+                    break;
+                }
+                case IDC_RED_MIN:
+                {
+                    newVal = max(0, newVal);
+                    newVal = min(newVal, GetDlgInt(hDlg, IDC_RED_MAX));
+                    break;
+                }
+                case IDC_RED_MAX:
+                {
+                    newVal = min(255, newVal);
+                    newVal = max(newVal, GetDlgInt(hDlg, IDC_RED_MIN));
+                    break;
+                }
+                case IDC_GREEN_MIN:
+                {
+                    newVal = max(0, newVal);
+                    newVal = min(newVal, GetDlgInt(hDlg, IDC_GREEN_MAX));
+                    break;
+                }
+                case IDC_GREEN_MAX:
+                {
+                    newVal = min(255, newVal);
+                    newVal = max(newVal, GetDlgInt(hDlg, IDC_GREEN_MIN));
+                    break;
+                }
+                case IDC_BLUE_MIN:
+                {
+                    newVal = max(0, newVal);
+                    newVal = min(newVal, GetDlgInt(hDlg, IDC_BLUE_MAX));
+                    break;
+                }
+                case IDC_BLUE_MAX:
+                {
+                    newVal = min(255, newVal);
+                    newVal = max(newVal, GetDlgInt(hDlg, IDC_BLUE_MIN));
+                    break;
+                }
                 }
 
                 SetDlgItemInt(hDlg, buddyId, newVal, FALSE);
-
-                // Indicate we've handled the notification so the control won't also
-                // do its automatic buddy update (we removed UDS_SETBUDDYINT to be safe).
                 return (INT_PTR)TRUE;
             }
         }
@@ -132,39 +141,40 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
     }
 
     case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK)
+    {
+        switch (LOWORD(wParam))
         {
-            HWND hwndMain = GetParent(hDlg);
-            wchar_t buf[128] = { 0 };
+        case IDOK:
+        {
+            // Read current control values into g_props
+            g_props.maxIter = GetDlgInt(hDlg, IDC_MAX_ITER);
+            g_props.centerReal = GetDlgDouble(hDlg, IDC_CENTER_REAL);
+            g_props.centerImag = GetDlgDouble(hDlg, IDC_CENTER_IMAG);
+            g_props.height = GetDlgDouble(hDlg, IDC_HEIGHT);
+            g_props.rmin = GetDlgInt(hDlg, IDC_RED_MIN);
+            g_props.rmax = GetDlgInt(hDlg, IDC_RED_MAX);
+            g_props.gmin = GetDlgInt(hDlg, IDC_GREEN_MIN);
+            g_props.gmax = GetDlgInt(hDlg, IDC_GREEN_MAX);
+            g_props.bmin = GetDlgInt(hDlg, IDC_BLUE_MIN);
+            g_props.bmax = GetDlgInt(hDlg, IDC_BLUE_MAX);
 
-            GetDlgItemTextW(hDlg, IDC_HEIGHT, buf, _countof(buf));
-            wchar_t* endptr = nullptr;
+            // Sanitize/limit as appropriate
+            if (g_props.maxIter < 1) g_props.maxIter = 1;
+            if (g_props.maxIter > 50000) g_props.maxIter = 50000; // arbitrary safety cap
 
-            // Convert to double; wcstod ignores leading whitespace and understands locale decimal separator for C locale;
-            // If you want locale-aware for user's locale, you can use _wtof or set locale accordingly.
-            double enteredHeight = wcstod(buf, &endptr);
-            if (endptr == buf || enteredHeight <= 0.0 || enteredHeight > 1e7)
-            {
-                MessageBoxW(hDlg, L"Please enter a valid positive height.", L"Invalid value", MB_OK | MB_ICONERROR);
-                return TRUE; // keep dialog open
-            }
-
-            // User supplied a world-space height (complex-plane units) and wants the current client area to represent that height.
-            // Compute new scale = enteredHeight / clientPixelHeight
-            double newScale = enteredHeight / static_cast<double>(g_state.height);
-            if (!(newScale > 0.0))
-            {
-                MessageBoxW(hDlg, L"Computed scale invalid.", L"Error", MB_OK | MB_ICONERROR);
-                return TRUE;
-            }
-
-            g_state.scale = newScale;
-            g_state.needRender = true;
-
-            InvalidateRect(hwndMain, NULL, FALSE);
             EndDialog(hDlg, IDOK);
-            return TRUE;
+            return (INT_PTR)TRUE;
         }
+        case IDCANCEL:
+            EndDialog(hDlg, IDCANCEL);
+            return (INT_PTR)TRUE;
+        }
+        break;
     }
+
+    // other message handling omitted for brevity...
+    }
+
+    // Ensure every control path returns a value to satisfy the compiler
     return (INT_PTR)FALSE;
 }
