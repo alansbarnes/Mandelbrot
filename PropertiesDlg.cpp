@@ -134,31 +134,37 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
     case WM_COMMAND:
         if (LOWORD(wParam) == IDOK)
         {
-            // Read values back into g_props
-            g_state.maxIter = GetDlgInt(hDlg, IDC_MAX_ITER);
-            g_state.centerX = GetDlgDouble(hDlg, IDC_CENTER_REAL);
-            g_state.centerY = GetDlgDouble(hDlg, IDC_CENTER_IMAG);
-            g_state.height = (int)(GetDlgDouble(hDlg, IDC_HEIGHT) / g_state.scale);
-            g_state.rmin = GetDlgInt(hDlg, IDC_RED_MIN);
-            g_state.rmax = GetDlgInt(hDlg, IDC_RED_MAX);
-            g_state.gmin = GetDlgInt(hDlg, IDC_GREEN_MIN);
-            g_state.gmax = GetDlgInt(hDlg, IDC_GREEN_MAX);
-            g_state.bmin = GetDlgInt(hDlg, IDC_BLUE_MIN);
-            g_state.bmax = GetDlgInt(hDlg, IDC_BLUE_MAX);
+            HWND hwndMain = GetParent(hDlg);
+            wchar_t buf[128] = { 0 };
 
+            GetDlgItemTextW(hDlg, IDC_HEIGHT, buf, _countof(buf));
+            wchar_t* endptr = nullptr;
+
+            // Convert to double; wcstod ignores leading whitespace and understands locale decimal separator for C locale;
+            // If you want locale-aware for user's locale, you can use _wtof or set locale accordingly.
+            double enteredHeight = wcstod(buf, &endptr);
+            if (endptr == buf || enteredHeight <= 0.0 || enteredHeight > 1e7)
+            {
+                MessageBoxW(hDlg, L"Please enter a valid positive height.", L"Invalid value", MB_OK | MB_ICONERROR);
+                return TRUE; // keep dialog open
+            }
+
+            // User supplied a world-space height (complex-plane units) and wants the current client area to represent that height.
+            // Compute new scale = enteredHeight / clientPixelHeight
+            double newScale = enteredHeight / static_cast<double>(g_state.height);
+            if (!(newScale > 0.0))
+            {
+                MessageBoxW(hDlg, L"Computed scale invalid.", L"Error", MB_OK | MB_ICONERROR);
+                return TRUE;
+            }
+
+            g_state.scale = newScale;
+            g_state.needRender = true;
+
+            InvalidateRect(hwndMain, NULL, FALSE);
             EndDialog(hDlg, IDOK);
-
-            ApplySelectionToWindow(GetParent(hDlg));
-            g_state.needRender = TRUE;
-            InvalidateRect(GetParent(hDlg), nullptr, FALSE);
-            return (INT_PTR)TRUE;
+            return TRUE;
         }
-        else if (LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, IDCANCEL);
-            return (INT_PTR)TRUE;
-        }
-        break;
     }
     return (INT_PTR)FALSE;
 }
