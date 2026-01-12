@@ -1,204 +1,167 @@
-//Microsoft Visual C++ generated resource script.
+// Microsoft Visual C++ generated resource script.
 //
 // DO NOT wrap or comment out the #include lines below - the resource compiler needs them verbatim.
 #include "resource.h"
 
-#define APSTUDIO_READONLY_SYMBOLS
-/////////////////////////////////////////////////////////////////////////////
-//
-// Generated from the TEXTINCLUDE resource.
-//
 #ifndef APSTUDIO_INVOKED
 #include "targetver.h"
 #endif
-#define APSTUDIO_HIDDEN_SYMBOLS
-#include "windows.h"
-#undef APSTUDIO_HIDDEN_SYMBOLS
-/////////////////////////////////////////////////////////////////////////////
-#undef APSTUDIO_READONLY_SYMBOLS
 
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-LANGUAGE 9, 1
+#include <windows.h>
 
 /////////////////////////////////////////////////////////////////////////////
 //
- // Icon
- //
+// Icons
+//
 
- // Icon with lowest ID value placed first to ensure application icon
- // remains consistent on all systems.
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_MANDELBROT       ICON    "Mandelbrot.ico"
+IDI_SMALL            ICON    "small.ico"
 
-    IDI_MANDELBROT       ICON         "Mandelbrot.ico"
-    IDI_SMALL               ICON         "small.ico"
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+IDC_MANDELBROT MENU
+BEGIN
+POPUP "&File"
+BEGIN
+MENUITEM "Properties...", IDM_PROPERTIES
+MENUITEM "E&xit", IDM_EXIT
+END
+POPUP "&Help"
+BEGIN
+MENUITEM "&About ...", IDM_ABOUT
+END
+END
 
-    /////////////////////////////////////////////////////////////////////////////
-    //
-    // Menu
-    //
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerators
+//
+IDC_MANDELBROT ACCELERATORS
+BEGIN
+"?", IDM_ABOUT, ASCII, ALT
+"/", IDM_ABOUT, ASCII, ALT
+END
 
-    IDC_MANDELBROT MENU
-    BEGIN
-    POPUP "&File"
-    BEGIN
-    MENUITEM "Properties...", IDM_PROPERTIES
-    MENUITEM "E&xit", IDM_EXIT
-    END
-    POPUP "&Help"
-    BEGIN
-    MENUITEM "&About ...", IDM_ABOUT
-    END
-    END
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialogs
+//
 
+IDD_ABOUTBOX DIALOGEX 0, 0, 170, 62
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About Mandelbrot"
+FONT 8, "MS Shell Dlg"
+BEGIN
+ICON            IDI_MANDELBROT, IDC_STATIC, 14, 14, 21, 20
+LTEXT           "Mandelbrot, Version 1.0", IDC_STATIC, 42, 14, 114, 8, SS_NOPREFIX
+LTEXT           "Copyright (c) 2026", IDC_STATIC, 42, 26, 114, 8
+DEFPUSHBUTTON   "OK", IDOK, 113, 41, 50, 14, WS_GROUP
+END
 
-    /////////////////////////////////////////////////////////////////////////////
-    //
-    // Accelerator
-    //
-
-    IDC_MANDELBROT ACCELERATORS
-    BEGIN
-    "?", IDM_ABOUT, ASCII, ALT
-    "/", IDM_ABOUT, ASCII, ALT
-    END
-
-
-    /////////////////////////////////////////////////////////////////////////////
-    //
-    // Dialog
-    //
-
-    IDD_ABOUTBOX DIALOGEX 0, 0, 170, 62
-    STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
-    CAPTION "About Mandelbrot"
-    FONT 8, "MS Shell Dlg"
-    BEGIN
-    ICON            IDI_MANDELBROT, IDC_STATIC, 14, 14, 21, 20
-    LTEXT           "Mandelbrot, Version 1.0", IDC_STATIC, 42, 14, 114, 8, SS_NOPREFIX
-    LTEXT           "Copyright (c) 2026", IDC_STATIC, 42, 26, 114, 8
-    DEFPUSHBUTTON   "OK", IDOK, 113, 41, 50, 14, WS_GROUP
-    END
-
-    /////////////////////////////////////////////////////////////////////////////
-    //
-    // DESIGNINFO
-    //
-
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO (used by Visual Studio layout editor)
+//
 #ifdef APSTUDIO_INVOKED
-    GUIDELINES DESIGNINFO
-    BEGIN
-    IDD_ABOUTBOX, DIALOG
-    BEGIN
-    LEFTMARGIN, 7
-    RIGHTMARGIN, 163
-    TOPMARGIN, 7
-    BOTTOMMARGIN, 55
-    END
-    END
+GUIDELINES DESIGNINFO
+BEGIN
+IDD_ABOUTBOX, DIALOG
+BEGIN
+LEFTMARGIN, 7
+RIGHTMARGIN, 163
+TOPMARGIN, 7
+BOTTOMMARGIN, 55
+END
+END
 #endif    // APSTUDIO_INVOKED
 
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE blocks for the resource editor
+//
 #ifdef APSTUDIO_INVOKED
-    /////////////////////////////////////////////////////////////////////////////
-    //
-    // TEXTINCLUDE
-    //
+1 TEXTINCLUDE
+BEGIN
+"resource.h\0"
+END
 
-    1 TEXTINCLUDE
-    BEGIN
-    "resource.h\0"
-    END
+2 TEXTINCLUDE
+BEGIN
+"#ifndef APSTUDIO_INVOKED\r\n"
+"#include ""targetver.h""\r\n"
+"#endif\r\n"
+"#define APSTUDIO_HIDDEN_SYMBOLS\r\n"
+"#include ""windows.h""\r\n"
+"#undef APSTUDIO_HIDDEN_SYMBOLS\r\n"
+"\0"
+END
 
-    2 TEXTINCLUDE
-    BEGIN
-    "#ifndef APSTUDIO_INVOKED\r\n"
-    "#include ""targetver.h""\r\n"
-    "#endif\r\n"
-    "#define APSTUDIO_HIDDEN_SYMBOLS\r\n"
-    "#include ""windows.h""\r\n"
-    "#undef APSTUDIO_HIDDEN_SYMBOLS\r\n"
-    "\0"
-    END
-
-    3 TEXTINCLUDE
-    BEGIN
-    "\r\n"
-    "\0"
-    END
-
+3 TEXTINCLUDE
+BEGIN
+"\r\n"
+"\0"
+END
 #endif    // APSTUDIO_INVOKED
 
-    // New (cleaned) Properties dialog resource
-    // Reworked layout: unique controls only, consistent spacing, spins positioned as buddies,
-    // and controls arranged in a single grid to avoid overlap / duplication.
-    IDD_PROPERTIES DIALOGEX 0, 0, 280, 220
-    STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
-    CAPTION "Properties"
-    FONT 8, "MS Shell Dlg"
-    BEGIN
-    // Maximum Iteration
-    LTEXT           "Maximum Iteration:", -1, 10, 10, 90, 10
-    EDITTEXT        IDC_MAX_ITER, 110, 8, 60, 14, ES_AUTOHSCROLL | ES_LEFT
-    CONTROL         "", IDC_MAX_ITER_SPIN, "msctls_updown32", UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_AUTOBUDDY | WS_CHILD | WS_VISIBLE, 172, 8, 12, 14
-
-    // Center (real + imag)
-    LTEXT           "Center:", -1, 10, 32, 40, 10
-    EDITTEXT        IDC_CENTER_REAL, 50, 30, 90, 14, ES_AUTOHSCROLL | ES_LEFT
-    LTEXT           "+", -1, 146, 32, 6, 12
-    EDITTEXT        IDC_CENTER_IMAG, 160, 30, 90, 14, ES_AUTOHSCROLL | ES_LEFT
-    LTEXT           "i", -1, 256, 32, 8, 12
-
-    // Height (world units)
-    LTEXT           "Height:", -1, 10, 56, 40, 10
-    EDITTEXT        IDC_HEIGHT, 110, 54, 140, 14, ES_AUTOHSCROLL | ES_LEFT
-
-    // Column headers for color min/max
-    LTEXT           "Minimum", -1, 90, 80, 48, 10
-    LTEXT           "Maximum", -1, 190, 80, 48, 10
-
-    // Red row
-    LTEXT           "Red", -1, 10, 100, 40, 10
-    EDITTEXT        IDC_RED_MIN, 90, 98, 80, 14, ES_AUTOHSCROLL | ES_LEFT
-    CONTROL         "", IDC_RED_MIN_SPIN, "msctls_updown32", UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_AUTOBUDDY | WS_CHILD | WS_VISIBLE, 172, 98, 12, 14
-    EDITTEXT        IDC_RED_MAX, 190, 98, 80, 14, ES_AUTOHSCROLL | ES_LEFT
-    CONTROL         "", IDC_RED_MAX_SPIN, "msctls_updown32", UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_AUTOBUDDY | WS_CHILD | WS_VISIBLE, 272, 98, 12, 14
-
-    // Green row
-    LTEXT           "Green", -1, 10, 122, 40, 10
-    EDITTEXT        IDC_GREEN_MIN, 90, 120, 80, 14, ES_AUTOHSCROLL | ES_LEFT
-    CONTROL         "", IDC_GREEN_MIN_SPIN, "msctls_updown32", UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_AUTOBUDDY | WS_CHILD | WS_VISIBLE, 172, 120, 12, 14
-    EDITTEXT        IDC_GREEN_MAX, 190, 120, 80, 14, ES_AUTOHSCROLL | ES_LEFT
-    CONTROL         "", IDC_GREEN_MAX_SPIN, "msctls_updown32", UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_AUTOBUDDY | WS_CHILD | WS_VISIBLE, 272, 120, 12, 14
-
-    // Blue row
-    LTEXT           "Blue", -1, 10, 144, 40, 10
-    EDITTEXT        IDC_BLUE_MIN, 90, 142, 80, 14, ES_AUTOHSCROLL | ES_LEFT
-    CONTROL         "", IDC_BLUE_MIN_SPIN, "msctls_updown32", UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_AUTOBUDDY | WS_CHILD | WS_VISIBLE, 172, 142, 12, 14
-    EDITTEXT        IDC_BLUE_MAX, 190, 142, 80, 14, ES_AUTOHSCROLL | ES_LEFT
-    CONTROL         "", IDC_BLUE_MAX_SPIN, "msctls_updown32", UDS_ALIGNRIGHT | UDS_ARROWKEYS | UDS_AUTOBUDDY | WS_CHILD | WS_VISIBLE, 272, 142, 12, 14
-
-    // OK / Cancel (anchors moved to bottom-right)
-    DEFPUSHBUTTON   "OK", IDOK, 190, 180, 60, 16
-    PUSHBUTTON      "Cancel", IDCANCEL, 258, 180, 60, 16
-    END
-
-    /////////////////////////////////////////////////////////////////////////////
-    //
-    // String Table
-    //
-
-    STRINGTABLE
-    BEGIN
-    IDC_MANDELBROT   "MANDELBROT"
-    IDS_APP_TITLE       "Mandelbrot"
-    END
-
-#endif
-    /////////////////////////////////////////////////////////////////////////////
-
-
-#ifndef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
 //
-// Generated from the TEXTINCLUDE resource.
+// Properties dialog (cleaned formatting; same layout and IDs preserved)
 //
+IDD_PROPERTIES DIALOGEX 0, 0, 360, 220
+STYLE DS_SETFONT | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "Properties"
+FONT 8, "MS Shell Dlg"
+BEGIN
+LTEXT           "Maximum Iteration:", -1, 7, 8, 80, 8
+EDITTEXT        IDC_MAXITER, 95, 6, 40, 12, ES_AUTOHSCROLL
+CONTROL         "", IDC_SPIN_MAXITER, "msctls_updown32", UDS_ALIGNRIGHT | UDS_SETBUDDYINT | WS_CHILD | WS_VISIBLE, 135, 6, 10, 12
+
+LTEXT           "Center:", -1, 7, 26, 32, 8
+EDITTEXT        IDC_CENTER_REAL, 45, 24, 120, 12, ES_AUTOHSCROLL
+LTEXT           "+", -1, 170, 26, 8, 8
+EDITTEXT        IDC_CENTER_IMAG, 180, 24, 120, 12, ES_AUTOHSCROLL
+LTEXT           "i", -1, 305, 26, 6, 8
+
+LTEXT           "Height:", -1, 7, 44, 36, 8
+EDITTEXT        IDC_HEIGHT, 45, 42, 160, 12, ES_AUTOHSCROLL
+
+GROUPBOX        "Minimum", -1, 40, 64, 120, 82
+GROUPBOX        "Maximum", -1, 200, 64, 120, 82
+
+LTEXT           "Red", -1, 10, 74, 28, 8
+EDITTEXT        IDC_RMIN, 50, 72, 60, 12, ES_AUTOHSCROLL
+CONTROL         "", IDC_SPIN_RMIN, "msctls_updown32", UDS_ALIGNRIGHT | UDS_SETBUDDYINT | WS_CHILD | WS_VISIBLE, 110, 72, 10, 12
+EDITTEXT        IDC_RMAX, 210, 72, 60, 12, ES_AUTOHSCROLL
+CONTROL         "", IDC_SPIN_RMAX, "msctls_updown32", UDS_ALIGNRIGHT | UDS_SETBUDDYINT | WS_CHILD | WS_VISIBLE, 270, 72, 10, 12
+
+LTEXT           "Green", -1, 10, 94, 28, 8
+EDITTEXT        IDC_GMIN, 50, 92, 60, 12, ES_AUTOHSCROLL
+CONTROL         "", IDC_SPIN_GMIN, "msctls_updown32", UDS_ALIGNRIGHT | UDS_SETBUDDYINT | WS_CHILD | WS_VISIBLE, 110, 92, 10, 12
+EDITTEXT        IDC_GMAX, 210, 92, 60, 12, ES_AUTOHSCROLL
+CONTROL         "", IDC_SPIN_GMAX, "msctls_updown32", UDS_ALIGNRIGHT | UDS_SETBUDDYINT | WS_CHILD | WS_VISIBLE, 270, 92, 10, 12
+
+LTEXT           "Blue", -1, 10, 114, 28, 8
+EDITTEXT        IDC_BMIN, 50, 112, 60, 12, ES_AUTOHSCROLL
+CONTROL         "", IDC_SPIN_BMIN, "msctls_updown32", UDS_ALIGNRIGHT | UDS_SETBUDDYINT | WS_CHILD | WS_VISIBLE, 110, 112, 10, 12
+EDITTEXT        IDC_BMAX, 210, 112, 60, 12, ES_AUTOHSCROLL
+CONTROL         "", IDC_SPIN_BMAX, "msctls_updown32", UDS_ALIGNRIGHT | UDS_SETBUDDYINT | WS_CHILD | WS_VISIBLE, 270, 112, 10, 12
+
+DEFPUSHBUTTON   "OK", IDOK, 220, 185, 50, 14, WS_GROUP
+PUSHBUTTON      "Cancel", IDCANCEL, 280, 185, 50, 14
+END
+
 /////////////////////////////////////////////////////////////////////////////
-#endif    // not APSTUDIO_INVOKED
+//
+// String Table
+//
+STRINGTABLE
+BEGIN
+IDC_MANDELBROT   "MANDELBROT"
+IDS_APP_TITLE    "Mandelbrot"
+END
+
+/////////////////////////////////////////////////////////////////////////////
