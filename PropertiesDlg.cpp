@@ -29,7 +29,7 @@ static double GetDlgDouble(HWND hDlg, int controlId)
 {
     char buf[64];
     GetDlgItemTextA(hDlg, controlId, buf, (int)sizeof(buf));
-    return atof(buf);
+    return std::stod(buf);
 }
 
 static int GetDlgInt(HWND hDlg, int controlId)
