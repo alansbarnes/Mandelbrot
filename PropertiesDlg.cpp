@@ -84,7 +84,6 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
             {
                 // Read current integer value, apply the inverted delta and write it back.
                 // Invert the requested delta so arrow keys/arrows operate in the opposite direction.
-                BOOL translated = FALSE;
                 UINT cur = GetDlgInt(hDlg, buddyId);
                 int newVal = (int)cur - p->iDelta; // invert direction
 
