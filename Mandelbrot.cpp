@@ -22,6 +22,7 @@
 #include <stdint.h>
 #include <math.h>
 #include <string>
+#include <format>
 
 extern AppState g_state;
 
@@ -509,8 +510,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         // Draw simple overlay text
         {
-            std::string info = "Center: " + std::to_string(g_state.centerX) + ", " + std::to_string(g_state.centerY)
-                + "  Scale: " + std::to_string(g_state.scale) + "  Iter: " + std::to_string(g_state.maxIter);
+            constexpr int D = std::numeric_limits<double>::max_digits10;
+            std::string info = "Center: " + std::format("{:.{}g}", g_state.centerX, D) + " + " + std::format("{:.{}g}", g_state.centerY, D) + "i" +
+                                "  Scale: " + std::format("{:.6f}", g_state.scale) +
+                                "  Iter: " + std::to_string(g_state.maxIter);
             SetTextColor(hdc, RGB(255, 255, 255));
             SetBkMode(hdc, TRANSPARENT);
             RECT r = { 8, 8, g_state.width - 8, 40 };
