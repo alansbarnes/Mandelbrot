@@ -220,11 +220,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
             case IDM_PROPERTIES:
             {
+                // Initialize the dialog properties from current state so the dialog shows the
+                // real current values (prevents stale values from being applied unintentionally).
+                extern Properties g_props;
+                g_props.maxIter = g_state.maxIter;
+                g_props.centerReal = g_state.centerX;
+                g_props.centerImag = g_state.centerY;
+                // Dialog expects "Height (world units)" -> scale = height / pixelHeight
+                // so height in world units is scale * pixelHeight
+                if (g_state.height > 0)
+                    g_props.height = g_state.scale * (double)g_state.height;
+                else
+                    g_props.height = 0.0;
+                g_props.rmin = g_state.rmin; g_props.rmax = g_state.rmax;
+                g_props.gmin = g_state.gmin; g_props.gmax = g_state.gmax;
+                g_props.bmin = g_state.bmin; g_props.bmax = g_state.bmax;
+
                 INT_PTR res = DialogBox(nullptr, MAKEINTRESOURCE(IDD_PROPERTIES), hwnd, PropertiesDlgProc);
                 if (res == IDOK)
                 {
                     // apply values from dialog
-                    extern Properties g_props;
                     g_state.maxIter = g_props.maxIter;
                     g_state.centerX = g_props.centerReal;
                     g_state.centerY = g_props.centerImag;
