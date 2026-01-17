@@ -158,8 +158,8 @@ INT_PTR CALLBACK PropertiesDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARA
             g_props.bmax = GetDlgInt(hDlg, IDC_BLUE_MAX);
 
             // Sanitize/limit as appropriate
-            if (g_props.maxIter < 1) g_props.maxIter = 1;
-            if (g_props.maxIter > 50000) g_props.maxIter = 50000; // arbitrary safety cap
+//          if (g_props.maxIter < 1) g_props.maxIter = 1;
+//          if (g_props.maxIter > 50000) g_props.maxIter = 50000; // arbitrary safety cap
 
             EndDialog(hDlg, IDOK);
             return (INT_PTR)TRUE;
