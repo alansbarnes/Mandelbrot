@@ -21,15 +21,18 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Resource.h">
+    <ClInclude Include="Mandelbrot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Mandelbrot.h">
+    <ClInclude Include="PropertiesDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Mandelbrot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PropertiesDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -45,5 +48,10 @@
     <Image Include="Mandelbrot.ico">
       <Filter>Resource Files</Filter>
     </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="resource.h">
+      <Filter>Header Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>

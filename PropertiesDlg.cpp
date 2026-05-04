@@ -21,7 +21,7 @@ Properties g_props = {
 static void SetDlgDouble(HWND hDlg, int controlId, double value)
 {
     char buf[64];
-    sprintf_s(buf, "%g", value);
+    sprintf_s(buf, "%.17g", value);
     SetDlgItemTextA(hDlg, controlId, buf);
 }
 
