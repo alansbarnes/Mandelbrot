@@ -628,26 +628,25 @@ void CMandelbrotView::BuildMenu()
         return;
     }
 
-    m_menu.CreateMenu();
+    HMENU menuHandle = ::CreateMenu();
+    HMENU fileMenu = ::CreatePopupMenu();
+    HMENU viewMenu = ::CreatePopupMenu();
+    HMENU helpMenu = ::CreatePopupMenu();
 
-    CMenu fileMenu;
-    fileMenu.CreatePopupMenu();
-    fileMenu.AppendMenu(MF_STRING, IDM_PROPERTIES, L"&Properties...");
-    fileMenu.AppendMenu(MF_STRING, ID_VIEW_RESET, L"&Reset\tR");
-    fileMenu.AppendMenu(MF_SEPARATOR);
-    fileMenu.AppendMenu(MF_STRING, IDM_EXIT, L"E&xit\tEsc");
-    m_menu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(fileMenu.Detach()), L"&File");
+    ::AppendMenuW(fileMenu, MF_STRING, IDM_PROPERTIES, L"&Properties...");
+    ::AppendMenuW(fileMenu, MF_STRING, ID_VIEW_RESET, L"&Reset\tR");
+    ::AppendMenuW(fileMenu, MF_SEPARATOR, 0, nullptr);
+    ::AppendMenuW(fileMenu, MF_STRING, IDM_EXIT, L"E&xit\tEsc");
+    ::AppendMenuW(menuHandle, MF_POPUP, reinterpret_cast<UINT_PTR>(fileMenu), L"&File");
 
-    CMenu viewMenu;
-    viewMenu.CreatePopupMenu();
-    viewMenu.AppendMenu(MF_STRING, ID_ITER_INC, L"Increase Iterations\t+");
-    viewMenu.AppendMenu(MF_STRING, ID_ITER_DEC, L"Decrease Iterations\t-");
-    m_menu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(viewMenu.Detach()), L"&View");
+    ::AppendMenuW(viewMenu, MF_STRING, ID_ITER_INC, L"Increase Iterations\t+");
+    ::AppendMenuW(viewMenu, MF_STRING, ID_ITER_DEC, L"Decrease Iterations\t-");
+    ::AppendMenuW(menuHandle, MF_POPUP, reinterpret_cast<UINT_PTR>(viewMenu), L"&View");
 
-    CMenu helpMenu;
-    helpMenu.CreatePopupMenu();
-    helpMenu.AppendMenu(MF_STRING, IDM_ABOUT, L"&About...");
-    m_menu.AppendMenu(MF_POPUP, reinterpret_cast<UINT_PTR>(helpMenu.Detach()), L"&Help");
+    ::AppendMenuW(helpMenu, MF_STRING, IDM_ABOUT, L"&About...");
+    ::AppendMenuW(menuHandle, MF_POPUP, reinterpret_cast<UINT_PTR>(helpMenu), L"&Help");
+
+    m_menu.Attach(menuHandle);
 
     SetMenu(&m_menu);
     DrawMenuBar();
