@@ -21,8 +21,10 @@ BOOL CMandelbrotApp::InitInstance()
     }
 
     auto* mainWindow = new CMandelbrotView();
-    CRect initialRect(0, 0, g_state.width, g_state.height);
-    ::AdjustWindowRect(initialRect, WS_OVERLAPPEDWINDOW, FALSE);
+    const int initialWidth = (g_state.width > 0) ? g_state.width : 1600;
+    const int initialHeight = (g_state.height > 0) ? g_state.height : 1200;
+    RECT initialRect{ 0, 0, initialWidth, initialHeight };
+    ::AdjustWindowRect(&initialRect, WS_OVERLAPPEDWINDOW, FALSE);
 
     if (!mainWindow->Create(nullptr, L"Mandelbrot Renderer", WS_OVERLAPPEDWINDOW, initialRect))
     {
