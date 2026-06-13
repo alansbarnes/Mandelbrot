@@ -27,12 +27,24 @@
     <ClInclude Include="Mandelbrot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="MandelbrotApp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="MandelbrotView.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="PropertiesDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="MandelbrotApp.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Mandelbrot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MandelbrotView.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PropertiesDlg.cpp">
